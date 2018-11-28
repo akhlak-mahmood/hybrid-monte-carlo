@@ -255,23 +255,10 @@ def md_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	potential = np.zeros(steps)
 	kinetic = np.zeros(steps)
 	temp = np.zeros(steps)
-	msd = np.zeros(steps)	# mean square distance
-
-	prev_pos = pos.copy()
-	real_pos = pos.copy()
 
 	print("Running dynamics ...")
 
 	for s in range(steps):
-		# measure distance travelled before pbc is applied
-		dist = pos - prev_pos
-		real_pos += dist
-
-		r2 = 0
-		for n in range(N):
-			r2 += np.dot(real_pos[n, :], real_pos[n, :])
-		msd[s] = r2/N
-
 		# rebound pbc positions
 		for d in range(D):
 			indices = np.where(pos[:, d] > L)
@@ -281,9 +268,9 @@ def md_loop(L, pos, vel, steps, dt, T=None, incr=0):
 
 		traj.append(pos.copy())
 
-		prev_pos = pos.copy()
-
 		kinetic[s], temp[s] = temperature_kinetic(vel)
+		km1, t = KE_moment(vel)
+		print(temp[s], t)
 
 		# velocity verlet, before force
 		pos += vel * dt + 0.5 * a * dt*dt
@@ -318,12 +305,6 @@ def md_loop(L, pos, vel, steps, dt, T=None, incr=0):
 		vel -= vcom/N
 
 	plot_energy(dt, steps, potential, kinetic, temp)
-
-	if incr:
-		# if temp increment is specified, plot
-		plot_msd_temp(tempincr, msd)
-
-	plot_msd(dt, steps, msd, D)
 
 	# if increment was not specified,
 	# return the measuered temperatures
