@@ -21,8 +21,12 @@ plt.rc('text', usetex=True)
 plt.rc('xtick', labelsize=18)
 plt.rc('ytick', labelsize=18)
 plt.rc('axes', labelsize=18)
+plt.rc('figure', figsize=(12,12))
 
 def no_overlap(D, pos, i):
+	""" Check if there's overlap between ith atoms
+		With the other atoms. """
+
 	for j in range(0, i):
 		r2 = 0
 		for d in range(D):
@@ -334,6 +338,33 @@ def plot_pos(pos, L):
 	plt.xlim(0, L)
 	plt.ylim(0, L)
 	plt.show()
+
+
+def KE_moment(vel, m=1):
+	""" Calculate moments of KE to test ergodicity. 
+		As defined in: K. Cho 1992, Phys.Rev.A 45 """
+
+	N, D = vel.shape
+
+	# Calculate <k> first
+	v2 = 0
+	for i in range(N):
+		v2 += np.dot(vel[i, :], vel[i, :])
+
+	kex = 0.5 * v2 / N
+
+	km_total = 0
+	for i in range(N):
+		k = 0.5 * np.dot(vel[i, :], vel[i, :])
+		# < (K - <k>)^m >
+		km_total += (k - kex)**m
+
+	# <K^m>
+	km = km_total / N
+
+	# average kinetic energy, temperature
+	return km, 2.0 * km / D
+
 
 def Problem_01():
 	N = 16
