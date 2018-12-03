@@ -8,6 +8,7 @@ from scipy.stats import maxwell, linregress
 from pdb import set_trace
 
 from lennardjones import LJ
+from simpleharmonic import SHO
 
 Rc = 3
 
