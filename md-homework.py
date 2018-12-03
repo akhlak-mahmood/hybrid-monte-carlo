@@ -85,7 +85,7 @@ def temperature_kinetic(vel):
 	# average kinetic energy, temperature
 	return kavg, 2.0 * kavg / D
 
-def plot_energy(dt, steps, U, K, T):
+def plot_energy(dt, steps, T, U, K):
 	time = [dt * i for i in range(steps)]
 
 	plt.subplot(4,1,1)
@@ -258,8 +258,7 @@ def Metropolis(qi, pi, L, N, MD, dt):
 
     for i in range(N):
  
-        # make a small change of config
-        # we will call hmc here
+        # make a small change using MD
         qt = q + np.random.randint(0,2) - 1
 
         # run MD and get final values
@@ -483,7 +482,7 @@ def Problem_01():
 
 	X, vel, T, U, K = vv_loop(L, pos, vel, steps, dt)
 
-	plot_energy(dt, steps, U, K, T)
+	plot_energy(dt, steps, T, U, K)
 
 	animate(X, L, T, steps, dt)
 
@@ -509,7 +508,7 @@ def Problem_02():
 
 	X, vel, T, U, K = lf_loop(L, pos, vel, steps, dt)
 
-	plot_energy(dt, steps, U, K, T)
+	plot_energy(dt, steps, T, U, K)
 
 	# rdf of last step
 	# radial_distribution(X[-1], L, L)
@@ -542,7 +541,7 @@ def Problem_03():
 
 	X, vel, T, U, K = lf_loop(L, pos, vel, steps, dt, 0.5, 0.1)
 
-	plot_energy(dt, steps, U, K, T)
+	plot_energy(dt, steps, T, U, K)
 
 	# rdf of last step
 	# radial_distribution(X[-1], L, L)
