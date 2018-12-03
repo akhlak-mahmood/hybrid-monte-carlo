@@ -7,17 +7,8 @@ from scipy.stats import maxwell, linregress
 
 from pdb import set_trace
 
-from lennardjones import LJ
+from lennardjones import LJ, SIG
 from simpleharmonic import SHO
-
-Rc = 3
-
-SIG = 1
-EPS = 1
-
-# one time calculations
-rc6 = 1.0 / (Rc**6)
-Ucut = 4 * ((rc6 * rc6) - rc6)
 
 # graphs setup
 plt.rc('text', usetex=True)
@@ -76,17 +67,6 @@ def mb_velocities(N, D, vmax):
 					vel[i, d] = v
 					break
 	return vel
-
-def temperature_kinetic(vel):
-	N, D = vel.shape
-	v2 = 0
-	for i in range(N):
-		v2 += np.dot(vel[i, :], vel[i, :])
-
-	kavg = 0.5 * v2 / N
-
-	# average kinetic energy, temperature
-	return kavg, 2.0 * kavg / D
 
 def plot_energy(dt, steps, T, U, K):
 	time = [dt * i for i in range(steps)]
@@ -219,7 +199,7 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 
 	# find initial values
 	a, u = model.calculate_force_potential(pos, L)
-	k, t = temperature_kinetic(vel)
+	k, t = model.ke_temp(vel)
 
 	traj.append(pos.copy())
 	potential[0] = u 
@@ -229,7 +209,7 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 	w = model.mc_weight(pos, vel, t, u, k)
 
 	for s in range(1, mc_steps):
-		print("Running Metropolis [step {}] ... ".format(s))
+		print("Running Metropolis [{}/{}] ... ".format(s, mc_steps))
  
 		# make a small change using MD
 		Xtraj, vel, T, U, K = lf_loop(model, L, pos, vel, md_steps, dt)
@@ -291,7 +271,7 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	print("Running Leapfrog [{} steps] ... ".format(steps), end='')
 
 	a, potential[0] = model.calculate_force_potential(pos, L)
-	kinetic[0], temp[0] = temperature_kinetic(vel)
+	kinetic[0], temp[0] = model.ke_temp(vel)
 
 	# make momentum half step at the very begining
 	# p = p - eps * grad(U)/2
@@ -307,7 +287,7 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 
 		traj.append(pos.copy())
 
-		kinetic[s], temp[s] = temperature_kinetic(vel)
+		kinetic[s], temp[s] = model.ke_temp(vel)
 
 		# make full q step
 		# q = q + eps * p 
@@ -348,7 +328,7 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	# p = p - eps * grad(U) / 2
 	vel = chi * vel + 0.5 * dt * a
 
-	kinetic[-1], temp[-1] = temperature_kinetic(vel)
+	kinetic[-1], temp[-1] = model.ke_temp(vel)
 
 	print('done.')
 
@@ -377,7 +357,7 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 
 		traj.append(pos.copy())
 
-		kinetic[s], temp[s] = temperature_kinetic(vel)
+		kinetic[s], temp[s] = model.ke_temp(vel)
 
 		# velocity verlet, before force
 		pos += vel * dt + 0.5 * a * dt*dt

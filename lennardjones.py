@@ -1,5 +1,14 @@
 import numpy as np
 
+Rc = 3
+
+SIG = 1
+EPS = 1
+
+# one time calculations
+rc6 = 1.0 / (Rc**6)
+Ucut = 4 * ((rc6 * rc6) - rc6)
+
 class LJ(object):
 
 	def __init__(self):
@@ -49,6 +58,16 @@ class LJ(object):
 		# acceleration, average pot energy
 		return F/mass, np.sum(U)/N
 
+	def ke_temp(self, vel):
+		N, D = vel.shape
+		v2 = 0
+		for i in range(N):
+			v2 += np.dot(vel[i, :], vel[i, :])
+
+		kavg = 0.5 * v2 / N
+
+		# average kinetic energy, temperature
+		return kavg, 2.0 * kavg / D
 
 	def mc_weight(self, pos, vel, t, u, k):
 
