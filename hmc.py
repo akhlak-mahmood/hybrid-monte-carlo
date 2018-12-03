@@ -63,8 +63,8 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 	""" Return N Metropolis configuration samples from initial
 		Positions and momenta """
 
-	# initial positions, has to a N-dim NP array
 	traj = []
+	velocities = []
 
 	potential = np.zeros(mc_steps)
 	kinetic = np.zeros(mc_steps)
@@ -75,6 +75,8 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 	k, t = model.ke_temp(vel)
 
 	traj.append(pos.copy())
+	velocities.append(vel.copy())
+
 	potential[0] = u 
 	kinetic[0] = k 
 	temp[0] = t
@@ -85,10 +87,10 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 		print("Running Metropolis [{}/{}] ... ".format(s, mc_steps))
  
 		# make a small change using MD
-		Xtraj, vel, T, U, K = lf_loop(model, L, pos, vel, md_steps, dt)
+		Xtraj, velocities, T, U, K = lf_loop(model, L, pos, vel, md_steps, dt)
 		
 		# negate the momentum/vel to make the proposal symmetric
-		trial_pos, trial_vel, trial_temp, trial_U, trial_K = Xtraj[-1], vel, T[-1], U[-1], K[-1]
+		trial_pos, trial_vel, trial_temp, trial_U, trial_K = Xtraj[-1], velocities[-1], T[-1], U[-1], K[-1]
 
 		# weight for the trial
 		wt = model.mc_weight(trial_pos, trial_vel, trial_temp, trial_U, trial_K)
@@ -117,6 +119,7 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 				k = trial_K.copy()
 
 		traj.append(pos.copy())
+		velocities.append(vel.copy())
 		potential[s] = u.copy()
 		kinetic[s] = k.copy()
 		temp[s] = t.copy()
@@ -124,7 +127,7 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 		print('Metropolis done.')
 
 	# Metropolis trajectory, vel, T, U, K
-	return traj, vel, temp, potential, kinetic
+	return traj, velocities, temp, potential, kinetic
 
 
 def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
@@ -135,6 +138,7 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	a = np.zeros((N, D))
 
 	traj = []
+	velocities = []
 	tempincr = []
 
 	potential = np.zeros(steps)
@@ -142,6 +146,9 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	temp = np.zeros(steps)
 
 	print("Running Leapfrog [{} steps] ... ".format(steps), end='')
+
+	traj.append(pos.copy())
+	velocities.append(vel.copy())
 
 	a, potential[0] = model.calculate_force_potential(pos, L)
 	kinetic[0], temp[0] = model.ke_temp(vel)
@@ -158,13 +165,12 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 			indices = np.where(pos[:, d] < 0)
 			pos[indices, d] += L
 
-		traj.append(pos.copy())
-
 		kinetic[s], temp[s] = model.ke_temp(vel)
 
 		# make full q step
 		# q = q + eps * p 
 		pos = pos + dt * vel 
+		traj.append(pos.copy())
 
 		if T is None:
 			# NVE Ensemble
@@ -188,6 +194,7 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 
 			# p = p - eps * grad(U)
 			vel = chi * vel + dt * a
+			velocities.append(vel.copy())
 
 
 		# reset COM velocity
@@ -201,22 +208,27 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	# p = p - eps * grad(U) / 2
 	vel = chi * vel + 0.5 * dt * a
 
+	velocities.append(vel.copy())
 	kinetic[-1], temp[-1] = model.ke_temp(vel)
 
 	print('done.')
 
-	return traj, vel, temp, potential, kinetic
+	return traj, velocities, temp, potential, kinetic
 
 def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	N, D = pos.shape
 	a = np.zeros((N, D))
 
 	traj = []
+	velocities = []
 	tempincr = []
 
 	potential = np.zeros(steps)
 	kinetic = np.zeros(steps)
 	temp = np.zeros(steps)
+
+	traj.append(pos.copy())
+	velocities.append(vel.copy())
 
 	print("Running Velocity-Verlet [{} steps] ... ".format(steps), end='')
 
@@ -227,8 +239,6 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 			pos[indices, d] -= L
 			indices = np.where(pos[:, d] < 0)
 			pos[indices, d] += L
-
-		traj.append(pos.copy())
 
 		kinetic[s], temp[s] = model.ke_temp(vel)
 
@@ -264,6 +274,9 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 		vcom = np.sum(vel, axis=0)/N
 		vel -= vcom/N
 
+		traj.append(pos.copy())
+		velocities.append(vel.copy())
+
 	# if increment was not specified,
 	# return the measuered temperatures
 	if len(tempincr) != steps:
@@ -271,8 +284,8 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 
 	print('done.')
 	
-	# list of coords at each timesteps, final velocities, temp
-	return traj, vel, tempincr, potential, kinetic
+	# list of coords at each timesteps, velocities, temp, PE, KE
+	return traj, velocities, tempincr, potential, kinetic
 
 def Problem_01():
 	N = 16
@@ -290,13 +303,13 @@ def Problem_01():
 	model = LJ()
 
 	# X, vel, T, U, K = vv_loop(L, pos, vel, steps, dt)
-	X, vel, T, U, K = HMC(model, L, pos, vel, steps, 5, dt)
+	X, V, T, U, K = HMC(model, L, pos, vel, steps, 5, dt)
 
 	plot.energy(dt, steps, T, U, K)
 
 	plot.animate(X, L, T, steps, dt)
 
-	plot.velocity_distribution(vel)
+	plot.velocity_distribution(V[-1])
 
 
 def Problem_02():
@@ -318,7 +331,7 @@ def Problem_02():
 
 	model = LJ()
 
-	X, vel, T, U, K = lf_loop(model, L, pos, vel, steps, dt)
+	X, V, T, U, K = lf_loop(model, L, pos, vel, steps, dt)
 
 	plot.energy(dt, steps, T, U, K)
 
@@ -327,7 +340,7 @@ def Problem_02():
 
 	plot.animate(X, L, T, steps, dt)
 
-	plot.velocity_distribution(vel)
+	plot.velocity_distribution(V[-1])
 
 	# save last step positions
 	np.savetxt('problem-02.xyz', X[-1])
@@ -353,7 +366,7 @@ def Problem_03():
 
 	model = LJ()
 
-	X, vel, T, U, K = vv_loop(model, L, pos, vel, steps, dt, 0.5, 0.1)
+	X, V, T, U, K = vv_loop(model, L, pos, vel, steps, dt, 0.5, 0.1)
 
 	plot.energy(dt, steps, T, U, K)
 
@@ -362,7 +375,7 @@ def Problem_03():
 
 	plot.animate(X, L, T, steps, dt)
 
-	# plot.velocity_distribution(vel)
+	# plot.velocity_distribution(V[-1])
 
 
 if __name__=='__main__':
