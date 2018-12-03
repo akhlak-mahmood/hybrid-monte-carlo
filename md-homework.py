@@ -184,23 +184,23 @@ def radial_distribution(pos, L, resolution=100):
 	plt.show()
 
 def animate(traj, L, T, steps, dt, intv=10):
-    fig = plt.figure(figsize=(8,8))
-    ax = plt.axes(xlim=(0, L), ylim=(0, L))
-    ax.add_patch(Rectangle((0,0),L,L,linewidth=2,edgecolor='b',facecolor='none'))
-    fno = ax.text(0.8*L, L-0.5, 'frame', fontsize=16)
-    temp = ax.text(0.8*L, 0.25, 'temp', fontsize=16)
-    line, = ax.plot([], [], 'ro', markersize=22)
+	fig = plt.figure(figsize=(8,8))
+	ax = plt.axes(xlim=(0, L), ylim=(0, L))
+	ax.add_patch(Rectangle((0,0),L,L,linewidth=2,edgecolor='b',facecolor='none'))
+	fno = ax.text(0.8*L, L-0.5, 'frame', fontsize=16)
+	temp = ax.text(0.8*L, 0.25, 'temp', fontsize=16)
+	line, = ax.plot([], [], 'ro', markersize=22)
 
-    def frame(i):
-        pos = traj[i]
-        line.set_data(pos[:,0], pos[:,1])
-        fno.set_text("t: {0:.1f}".format(i*dt))
-        temp.set_text("T: {0:.1f}".format(T[i]))
-        return line, fno, temp,
+	def frame(i):
+		pos = traj[i]
+		line.set_data(pos[:,0], pos[:,1])
+		fno.set_text("t: {0:.1f}".format(i*dt))
+		temp.set_text("T: {0:.1f}".format(T[i]))
+		return line, fno, temp,
 
-    anim = animation.FuncAnimation(fig, frame,
-                               frames=steps, interval=intv, blit=True)
-    plt.show()
+	anim = animation.FuncAnimation(fig, frame,
+							   frames=steps, interval=intv, blit=True)
+	plt.show()
 
 def calculate_force_potential(pos, L):
 	""" Calculate LJ force and potential
@@ -230,9 +230,9 @@ def calculate_force_potential(pos, L):
 
 			if rij < Rc*Rc:
 
-				r2 = 1.0/rij	# 1/r^2
-				r6 = r2**3.0	# 1/r^6	
-				r12 = r6**2.0	# 1/r^12
+				r2 = 1.0/rij    # 1/r^2
+				r6 = r2**3.0    # 1/r^6 
+				r12 = r6**2.0   # 1/r^12
 
 				u = 4 * (r12 - r6) - Ucut
 				f = 24 * (2.0*r12 - r6) * r2
@@ -247,77 +247,82 @@ def calculate_force_potential(pos, L):
 	return F/mass, np.sum(U)/N
 
 
-def Metropolis(qi, pi, L, N, MD, dt):
-    """ Return N Metropolis configuration samples from initial
-    	Positions and momenta """
-    q = qi
-    cfg = [qi]
+def mc_weight(pos, vel, t, u, k):
 
-    # we need the very first values to start MD
-    a, U = calculate_force_potential(q, L)
+	# exp of H
+	return np.exp(u+k)
 
-    for i in range(N):
- 
-        # make a small change using MD
-        qt = q + np.random.randint(0,2) - 1
+def HMC(L, pos, vel, mc_steps, md_steps, dt):
+	""" Return N Metropolis configuration samples from initial
+		Positions and momenta """
 
-        # run MD and get final values
-        
-        # calculate the weights
-        wq = initial_distribution(q)
-        wt = initial_distribution(qt)
-
-        # ratio of the weights = probability of the trial config
-        r = wt / wq
-        
-        if r >= 1:
-            q = qt
-        
-        else:
-            # we are moving to the trial position with probability r
-            # i.e. only if the generated random no is less than r
-            # eq. r = 0.2, then prob of generating a number less than 0.2 is rand() < 0.2
-            if np.random.rand() < r:
-                q = qt
-
-        cfg.append(q)
-
-    return cfg
-
-
-def check_lf(L, pos, vel, steps, dt, T=None, incr=0):
-	""" Check LF method without using Metropolis """
-	N, D = pos.shape
-	a = np.zeros((N, D))
-
+	# initial positions, has to a N-dim NP array
 	traj = []
-	tempincr = []
 
-	potential = np.zeros(steps+1)
-	kinetic = np.zeros(steps+1)
-	temp = np.zeros(steps+1)
+	potential = np.zeros(mc_steps)
+	kinetic = np.zeros(mc_steps)
+	temp = np.zeros(mc_steps)
 
-	a, potential[0] = calculate_force_potential(pos, L)
-	kinetic[0], temp[0] = temperature_kinetic(vel)
-	traj.append(pos)
+	# find initial weight
+	a, u = calculate_force_potential(pos, L)
+	k, t = temperature_kinetic(vel)
 
-	for i in range(steps):
-		pos, vel, a, potential[i+1] = lf_loop(L, 1, dt, pos, vel, a, potential[i])
-		kinetic[i+1], temp[i+1] = temperature_kinetic(vel)
-		traj.append(pos)
+	traj.append(pos.copy())
+	potential[0] = u 
+	kinetic[0] = k 
+	temp[0] = t
+	
+	w = mc_weight(pos, vel, t, u, k)
 
-		# reset COM velocity
-		vcom = np.sum(vel, axis=0)/N
-		vel -= vcom/N
+	for s in range(1, mc_steps):
+		print("Running Metropolis [step {}] ... ".format(s))
+ 
+		# make a small change using MD
+		Xtraj, vel, T, U, K = lf_loop(L, pos, vel, md_steps, dt)
+		
+		# negate the momentum/vel to make the proposal symmetric
+		trial_pos, trial_vel, trial_temp, trial_U, trial_K = Xtraj[-1], vel, T[-1], U[-1], K[-1]
 
-	plot_energy(dt, steps+1, potential, kinetic, temp)
+		# weight for the trial
+		wt = mc_weight(trial_pos, trial_vel, trial_temp, trial_U, trial_K)
 
-	return traj, vel, temp
+		# ratio of the weights = probability of the trial config
+		r = wt / w
+		
+		if r >= 1:
+			w = wt
+			pos = trial_pos.copy()
+			vel = trial_vel.copy()
+			t = trial_temp.copy()
+			u = trial_U.copy()
+			k = trial_K.copy()
+		
+		else:
+			# we are moving to the trial position with probability r
+			# i.e. only if the generated random no is less than r
+			# eq. r = 0.2, then prob of generating a number less than 0.2 is rand() < 0.2
+			if np.random.rand() < r:
+				w = wt
+				pos = trial_pos.copy()
+				vel = trial_vel.copy()
+				t = trial_temp.copy()
+				u = trial_U.copy()
+				k = trial_K.copy()
+
+		traj.append(pos.copy())
+		potential[s] = u.copy()
+		kinetic[s] = k.copy()
+		temp[s] = t.copy()
+
+		print('Metropolis done.')
+
+	# Metropolis trajectory, vel, T, U, K
+	return traj, vel, temp, potential, kinetic
 
 
 def lf_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	""" Hybrid monte carlo with leapfrog method.
-		Return MD position and momenta after <steps> steps. """
+		Return history of the whole MD run and final velocities. """
 
 	N, D = pos.shape
 	a = np.zeros((N, D))
@@ -329,7 +334,7 @@ def lf_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	kinetic = np.zeros(steps)
 	temp = np.zeros(steps)
 
-	print("Running dynamics [{} steps] ... ".format(steps), end='')
+	print("Running Leapfrog [{} steps] ... ".format(steps), end='')
 
 	a, potential[0] = calculate_force_potential(pos, L)
 	kinetic[0], temp[0] = temperature_kinetic(vel)
@@ -406,7 +411,7 @@ def vv_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	kinetic = np.zeros(steps)
 	temp = np.zeros(steps)
 
-	print("Running dynamics [{} steps] ... ".format(steps))
+	print("Running Velocity-Verlet [{} steps] ... ".format(steps), end='')
 
 	for s in range(steps):
 		# rebound pbc positions
@@ -456,6 +461,8 @@ def vv_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	# return the measuered temperatures
 	if len(tempincr) != steps:
 		tempincr = temp
+
+	print('done.')
 	
 	# list of coords at each timesteps, final velocities, temp
 	return traj, vel, tempincr, potential, kinetic
@@ -480,7 +487,8 @@ def Problem_01():
 
 	vel = mb_velocities(N, D, 1.5)
 
-	X, vel, T, U, K = vv_loop(L, pos, vel, steps, dt)
+	# X, vel, T, U, K = vv_loop(L, pos, vel, steps, dt)
+	X, vel, T, U, K = HMC(L, pos, vel, steps, 5, dt)
 
 	plot_energy(dt, steps, T, U, K)
 
