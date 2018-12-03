@@ -38,7 +38,6 @@ def random_positions(N, D, L):
 
 	return pos
 
-
 def crystal_positions():
 	pos = -1 * np.zeros((16, 2))
 	for n in range(16):

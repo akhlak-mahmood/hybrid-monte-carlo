@@ -6,20 +6,11 @@ class SHO(object):
 		pass 
 
 	def calculate_force_potential(self, x, L):
-		pass
+		return -x, 0.5 * x *x
 
 	def mc_weight(self, pos, vel, t, u, k):
-		H = 0.5 * np.dot(pos, pos) + 0.5 * np.dot(vel, vel)
-		# exp of H
-		return np.exp(H)
+		return np.exp(u+k)
 
-	def ke_temp(self, vel):
-		N, D = vel.shape
-		v2 = 0
-		for i in range(N):
-			v2 += np.dot(vel[i, :], vel[i, :])
-
-		kavg = 0.5 * v2 / N
-
-		# average kinetic energy, temperature
-		return kavg, 2.0 * kavg / D
+	def ke_temp(self, v):
+		k = 0.5 * v * v 
+		return k, 2*k
