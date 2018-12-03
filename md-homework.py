@@ -203,6 +203,8 @@ def animate(traj, L, T, steps, dt, intv=10):
     plt.show()
 
 def calculate_force_potential(pos, L):
+	""" Calculate LJ force and potential
+		Based on given position and box length. """
 	mass = 1
 	N, D = pos.shape
 
@@ -245,37 +247,115 @@ def calculate_force_potential(pos, L):
 	return F/mass, np.sum(U)/N
 
 
-def Metropolis(init_config, N):
-    """ Return N Metropolis configuration samples from an initial configuration """
-    x = init_config
-    cfg = [init_config]
+def Metropolis(qi, pi, L, N, MD, dt):
+    """ Return N Metropolis configuration samples from initial
+    	Positions and momenta """
+    q = qi
+    cfg = [qi]
+
+    # we need the very first values to start MD
+    a, U = calculate_force_potential(q, L)
 
     for i in range(N):
  
         # make a small change of config
-        xt = x + np.random.randint(0,2) - 1
+        # we will call hmc here
+        qt = q + np.random.randint(0,2) - 1
+
+        # run MD and get final values
         
         # calculate the weights
-        wx = initial_distribution(x)
-        wt = initial_distribution(xt)
+        wq = initial_distribution(q)
+        wt = initial_distribution(qt)
 
         # ratio of the weights = probability of the trial config
-        r = wt / wx
+        r = wt / wq
         
         if r >= 1:
-            x = xt
+            q = qt
         
         else:
             # we are moving to the trial position with probability r
             # i.e. only if the generated random no is less than r
-            # ex. r = 0.2, then prob of generating a number less than 0.2 is rand() < 0.2
+            # eq. r = 0.2, then prob of generating a number less than 0.2 is rand() < 0.2
             if np.random.rand() < r:
-                x = xt
+                q = qt
 
-        cfg.append(x)
+        cfg.append(q)
 
     return cfg
 
+
+def check_lf(L, pos, vel, steps, dt, T=None, incr=0):
+	""" Check LF method without using Metropolis """
+	N, D = pos.shape
+	a = np.zeros((N, D))
+
+	traj = []
+	tempincr = []
+
+	potential = np.zeros(steps+1)
+	kinetic = np.zeros(steps+1)
+	temp = np.zeros(steps+1)
+
+	a, potential[0] = calculate_force_potential(pos, L)
+	kinetic[0], temp[0] = temperature_kinetic(vel)
+	traj.append(pos)
+
+	for i in range(steps):
+		pos, vel, a, potential[i+1] = hmc_lf(L, 1, dt, pos, vel, a, potential[i])
+		kinetic[i+1], temp[i+1] = temperature_kinetic(vel)
+		traj.append(pos)
+
+		# reset COM velocity
+		vcom = np.sum(vel, axis=0)/N
+		vel -= vcom/N
+
+	plot_energy(dt, steps+1, potential, kinetic, temp)
+
+	return traj, vel, temp
+
+
+def hmc_lf(L, steps, dt, pos, vel, a, U):
+	""" Hybrid monte carlo with leapfrog method.
+		Return MD position and momenta after <steps> steps. """
+
+	N, D = pos.shape
+
+	print("Running dynamics [{} steps] ... ".format(steps), end='')
+
+	# make momentum half step at the very begining
+	# p = p - eps * grad(U)/2
+	vel = vel + 0.5 * dt * a
+
+	for i in range(steps):
+		# rebound pbc positions
+		for d in range(D):
+			indices = np.where(pos[:, d] > L)
+			pos[indices, d] -= L
+			indices = np.where(pos[:, d] < 0)
+			pos[indices, d] += L
+
+		# make full q step
+		# q = q + eps * p 
+		pos = pos + dt * vel 
+
+		# make p full step, if not the last one
+		if i < steps - 1:
+			a, U = calculate_force_potential(pos, L)
+
+			# p = p - eps * grad(U)
+			vel = vel + dt * a
+
+	a, U = calculate_force_potential(pos, L)
+
+	# make the final p half step
+	# p = p - eps * grad(U) / 2
+	vel = vel + 0.5 * dt * U
+
+	print('done.')
+
+	return pos, vel, a, U
 
 def md_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	N, D = pos.shape
@@ -301,8 +381,6 @@ def md_loop(L, pos, vel, steps, dt, T=None, incr=0):
 		traj.append(pos.copy())
 
 		kinetic[s], temp[s] = temperature_kinetic(vel)
-		km1, t = KE_moment(vel)
-		print(temp[s], t)
 
 		# velocity verlet, before force
 		pos += vel * dt + 0.5 * a * dt*dt
@@ -366,9 +444,10 @@ def Problem_01():
 
 	vel = mb_velocities(N, D, 1.5)
 
-	X, vel, T = md_loop(L, pos, vel, steps, dt)
+	# X, vel, T = md_loop(L, pos, vel, steps, dt)
+	X, vel, T = check_lf(L, pos, vel, steps, dt)
 
-	# animate(X, L, T, steps, dt)
+	animate(X, L, T, steps, dt)
 
 	plot_velocity_distribution(vel)
 
@@ -382,18 +461,18 @@ def Problem_02():
 	dt = 0.005
 
 	pos = crystal_positions()
-	plot_pos(pos, L)
-	radial_distribution(pos, L, L)
+	# plot_pos(pos, L)
+	# radial_distribution(pos, L, L)
 
 	# Set tiny random velocities
 	# For normal distribution N(mu, sigma^2)
 	# sigma * np.random.randn(...) + mu
 	vel = np.random.randn(N, D) / 10000
 
-	X, vel, T = md_loop(L, pos, vel, steps, dt)
+	X, vel, T = check_lf(L, pos, vel, steps, dt)
 
 	# rdf of last step
-	radial_distribution(X[-1], L, L)
+	# radial_distribution(X[-1], L, L)
 
 	animate(X, L, T, steps, dt)
 
