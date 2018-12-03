@@ -202,57 +202,63 @@ def animate(traj, L, T, steps, dt, intv=10):
 							   frames=steps, interval=intv, blit=True)
 	plt.show()
 
-def calculate_force_potential(pos, L):
-	""" Calculate LJ force and potential
-		Based on given position and box length. """
-	mass = 1
-	N, D = pos.shape
 
-	F = np.zeros((N, D))
-	U = np.zeros(N)
+class LJ(object):
 
-	# for each pair
-	for i in range(N-1):
-		# do not count double
-		for j in range(i+1, N):
+	def __init__(self):
+		pass
 
-			# component distance
-			sij = pos[i, :] - pos[j, :]
+	def calculate_force_potential(self, pos, L):
+		""" Calculate LJ force and potential
+			Based on given position and box length. """
+		mass = 1
+		N, D = pos.shape
 
-			for d in range(D):
-				# component
-				if np.abs(sij[d]) > 0.5 * L:
-					# pbc distance
-					sij[d] = sij[d] - np.copysign(L, sij[d])
+		F = np.zeros((N, D))
+		U = np.zeros(N)
 
-			# dot product = r^2
-			rij = np.dot(sij, sij)
+		# for each pair
+		for i in range(N-1):
+			# do not count double
+			for j in range(i+1, N):
 
-			if rij < Rc*Rc:
+				# component distance
+				sij = pos[i, :] - pos[j, :]
 
-				r2 = 1.0/rij    # 1/r^2
-				r6 = r2**3.0    # 1/r^6 
-				r12 = r6**2.0   # 1/r^12
+				for d in range(D):
+					# component
+					if np.abs(sij[d]) > 0.5 * L:
+						# pbc distance
+						sij[d] = sij[d] - np.copysign(L, sij[d])
 
-				u = 4 * (r12 - r6) - Ucut
-				f = 24 * (2.0*r12 - r6) * r2
+				# dot product = r^2
+				rij = np.dot(sij, sij)
 
-				U[i] += u / 2
-				U[j] += u / 2
+				if rij < Rc*Rc:
 
-				F[i, :] += sij * f
-				F[j, :] -= sij * f
+					r2 = 1.0/rij    # 1/r^2
+					r6 = r2**3.0    # 1/r^6 
+					r12 = r6**2.0   # 1/r^12
 
-	# acceleration, average pot energy
-	return F/mass, np.sum(U)/N
+					u = 4 * (r12 - r6) - Ucut
+					f = 24 * (2.0*r12 - r6) * r2
+
+					U[i] += u / 2
+					U[j] += u / 2
+
+					F[i, :] += sij * f
+					F[j, :] -= sij * f
+
+		# acceleration, average pot energy
+		return F/mass, np.sum(U)/N
 
 
-def mc_weight(pos, vel, t, u, k):
+	def mc_weight(self, pos, vel, t, u, k):
 
-	# exp of H
-	return np.exp(u+k)
+		# exp of H
+		return np.exp(u+k)
 
-def HMC(L, pos, vel, mc_steps, md_steps, dt):
+def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 	""" Return N Metropolis configuration samples from initial
 		Positions and momenta """
 
@@ -263,8 +269,8 @@ def HMC(L, pos, vel, mc_steps, md_steps, dt):
 	kinetic = np.zeros(mc_steps)
 	temp = np.zeros(mc_steps)
 
-	# find initial weight
-	a, u = calculate_force_potential(pos, L)
+	# find initial values
+	a, u = model.calculate_force_potential(pos, L)
 	k, t = temperature_kinetic(vel)
 
 	traj.append(pos.copy())
@@ -272,19 +278,19 @@ def HMC(L, pos, vel, mc_steps, md_steps, dt):
 	kinetic[0] = k 
 	temp[0] = t
 	
-	w = mc_weight(pos, vel, t, u, k)
+	w = model.mc_weight(pos, vel, t, u, k)
 
 	for s in range(1, mc_steps):
 		print("Running Metropolis [step {}] ... ".format(s))
  
 		# make a small change using MD
-		Xtraj, vel, T, U, K = lf_loop(L, pos, vel, md_steps, dt)
+		Xtraj, vel, T, U, K = lf_loop(model, L, pos, vel, md_steps, dt)
 		
 		# negate the momentum/vel to make the proposal symmetric
 		trial_pos, trial_vel, trial_temp, trial_U, trial_K = Xtraj[-1], vel, T[-1], U[-1], K[-1]
 
 		# weight for the trial
-		wt = mc_weight(trial_pos, trial_vel, trial_temp, trial_U, trial_K)
+		wt = model.mc_weight(trial_pos, trial_vel, trial_temp, trial_U, trial_K)
 
 		# ratio of the weights = probability of the trial config
 		r = wt / w
@@ -320,7 +326,7 @@ def HMC(L, pos, vel, mc_steps, md_steps, dt):
 	return traj, vel, temp, potential, kinetic
 
 
-def lf_loop(L, pos, vel, steps, dt, T=None, incr=0):
+def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	""" Hybrid monte carlo with leapfrog method.
 		Return history of the whole MD run and final velocities. """
 
@@ -336,7 +342,7 @@ def lf_loop(L, pos, vel, steps, dt, T=None, incr=0):
 
 	print("Running Leapfrog [{} steps] ... ".format(steps), end='')
 
-	a, potential[0] = calculate_force_potential(pos, L)
+	a, potential[0] = model.calculate_force_potential(pos, L)
 	kinetic[0], temp[0] = temperature_kinetic(vel)
 
 	# make momentum half step at the very begining
@@ -377,7 +383,7 @@ def lf_loop(L, pos, vel, steps, dt, T=None, incr=0):
 
 		# make p full step, if not the last one
 		if s < steps - 1:
-			a, potential[s] = calculate_force_potential(pos, L)
+			a, potential[s] = model.calculate_force_potential(pos, L)
 
 			# p = p - eps * grad(U)
 			vel = chi * vel + dt * a
@@ -389,7 +395,7 @@ def lf_loop(L, pos, vel, steps, dt, T=None, incr=0):
 
 
 	# make the final p half step
-	a, potential[-1] = calculate_force_potential(pos, L)
+	a, potential[-1] = model.calculate_force_potential(pos, L)
 
 	# p = p - eps * grad(U) / 2
 	vel = chi * vel + 0.5 * dt * a
@@ -400,7 +406,7 @@ def lf_loop(L, pos, vel, steps, dt, T=None, incr=0):
 
 	return traj, vel, temp, potential, kinetic
 
-def vv_loop(L, pos, vel, steps, dt, T=None, incr=0):
+def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	N, D = pos.shape
 	a = np.zeros((N, D))
 
@@ -448,7 +454,7 @@ def vv_loop(L, pos, vel, steps, dt, T=None, incr=0):
 		vel = chi * vel + 0.5 * a * dt
 
 		# find forces
-		a, potential[s] = calculate_force_potential(pos, L)
+		a, potential[s] = model.calculate_force_potential(pos, L)
 
 		# velocity verlet, after force
 		vel += 0.5 * a * dt
@@ -487,8 +493,10 @@ def Problem_01():
 
 	vel = mb_velocities(N, D, 1.5)
 
+	model = LJ()
+
 	# X, vel, T, U, K = vv_loop(L, pos, vel, steps, dt)
-	X, vel, T, U, K = HMC(L, pos, vel, steps, 5, dt)
+	X, vel, T, U, K = HMC(model, L, pos, vel, steps, 5, dt)
 
 	plot_energy(dt, steps, T, U, K)
 
@@ -514,7 +522,9 @@ def Problem_02():
 	# sigma * np.random.randn(...) + mu
 	vel = np.random.randn(N, D) / 10000
 
-	X, vel, T, U, K = lf_loop(L, pos, vel, steps, dt)
+	model = LJ()
+
+	X, vel, T, U, K = lf_loop(model, L, pos, vel, steps, dt)
 
 	plot_energy(dt, steps, T, U, K)
 
@@ -547,7 +557,9 @@ def Problem_03():
 	# sigma * np.random.randn(...) + mu
 	vel = np.random.randn(N, D) / 10000
 
-	X, vel, T, U, K = lf_loop(L, pos, vel, steps, dt, 0.5, 0.1)
+	model = LJ()
+
+	X, vel, T, U, K = vv_loop(model, L, pos, vel, steps, dt, 0.5, 0.1)
 
 	plot_energy(dt, steps, T, U, K)
 
