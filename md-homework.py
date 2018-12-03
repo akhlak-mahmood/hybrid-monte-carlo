@@ -245,6 +245,38 @@ def calculate_force_potential(pos, L):
 	return F/mass, np.sum(U)/N
 
 
+def Metropolis(init_config, N):
+    """ Return N Metropolis configuration samples from an initial configuration """
+    x = init_config
+    cfg = [init_config]
+
+    for i in range(N):
+ 
+        # make a small change of config
+        xt = x + np.random.randint(0,2) - 1
+        
+        # calculate the weights
+        wx = initial_distribution(x)
+        wt = initial_distribution(xt)
+
+        # ratio of the weights = probability of the trial config
+        r = wt / wx
+        
+        if r >= 1:
+            x = xt
+        
+        else:
+            # we are moving to the trial position with probability r
+            # i.e. only if the generated random no is less than r
+            # ex. r = 0.2, then prob of generating a number less than 0.2 is rand() < 0.2
+            if np.random.rand() < r:
+                x = xt
+
+        cfg.append(x)
+
+    return cfg
+
+
 def md_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	N, D = pos.shape
 	a = np.zeros((N, D))
@@ -319,32 +351,6 @@ def plot_pos(pos, L):
 	plt.xlim(0, L)
 	plt.ylim(0, L)
 	plt.show()
-
-
-def KE_moment(vel, m=1):
-	""" Calculate moments of KE to test ergodicity. 
-		As defined in: K. Cho 1992, Phys.Rev.A 45 """
-
-	N, D = vel.shape
-
-	# Calculate <k> first
-	v2 = 0
-	for i in range(N):
-		v2 += np.dot(vel[i, :], vel[i, :])
-
-	kex = 0.5 * v2 / N
-
-	km_total = 0
-	for i in range(N):
-		k = 0.5 * np.dot(vel[i, :], vel[i, :])
-		# < (K - <k>)^m >
-		km_total += (k - kex)**m
-
-	# <K^m>
-	km = km_total / N
-
-	# average kinetic energy, temperature
-	return km, 2.0 * km / D
 
 
 def Problem_01():
