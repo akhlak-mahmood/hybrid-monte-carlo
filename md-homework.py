@@ -157,7 +157,7 @@ def plot_velocity_distribution(vel):
 
 	plt.show()
 
-def radial_distribution(pos, L, resolution=100):
+def plot_radial_distribution(pos, L, resolution=100):
 	N, D = pos.shape
 	volume = L**D
 	density = N/volume
@@ -515,7 +515,7 @@ def Problem_02():
 
 	pos = crystal_positions()
 	# plot_pos(pos, L)
-	# radial_distribution(pos, L, L)
+	# plot_radial_distribution(pos, L, L)
 
 	# Set tiny random velocities
 	# For normal distribution N(mu, sigma^2)
@@ -529,7 +529,7 @@ def Problem_02():
 	plot_energy(dt, steps, T, U, K)
 
 	# rdf of last step
-	# radial_distribution(X[-1], L, L)
+	# plot_radial_distribution(X[-1], L, L)
 
 	animate(X, L, T, steps, dt)
 
@@ -550,7 +550,7 @@ def Problem_03():
 	pos = np.loadtxt('problem-02.xyz')
 
 	# plot_pos(pos, L)
-	# radial_distribution(pos, L, L)
+	# plot_radial_distribution(pos, L, L)
 
 	# Set tiny random velocities
 	# For normal distribution N(mu, sigma^2)
@@ -564,7 +564,7 @@ def Problem_03():
 	plot_energy(dt, steps, T, U, K)
 
 	# rdf of last step
-	# radial_distribution(X[-1], L, L)
+	# plot_radial_distribution(X[-1], L, L)
 
 	animate(X, L, T, steps, dt)
 
