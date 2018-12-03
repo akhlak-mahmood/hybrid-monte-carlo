@@ -303,7 +303,7 @@ def check_lf(L, pos, vel, steps, dt, T=None, incr=0):
 	traj.append(pos)
 
 	for i in range(steps):
-		pos, vel, a, potential[i+1] = hmc_lf(L, 1, dt, pos, vel, a, potential[i])
+		pos, vel, a, potential[i+1] = lf_loop(L, 1, dt, pos, vel, a, potential[i])
 		kinetic[i+1], temp[i+1] = temperature_kinetic(vel)
 		traj.append(pos)
 
@@ -316,48 +316,10 @@ def check_lf(L, pos, vel, steps, dt, T=None, incr=0):
 	return traj, vel, temp
 
 
-def hmc_lf(L, steps, dt, pos, vel, a, U):
+def lf_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	""" Hybrid monte carlo with leapfrog method.
 		Return MD position and momenta after <steps> steps. """
 
-	N, D = pos.shape
-
-	print("Running dynamics [{} steps] ... ".format(steps), end='')
-
-	# make momentum half step at the very begining
-	# p = p - eps * grad(U)/2
-	vel = vel + 0.5 * dt * a
-
-	for i in range(steps):
-		# rebound pbc positions
-		for d in range(D):
-			indices = np.where(pos[:, d] > L)
-			pos[indices, d] -= L
-			indices = np.where(pos[:, d] < 0)
-			pos[indices, d] += L
-
-		# make full q step
-		# q = q + eps * p 
-		pos = pos + dt * vel 
-
-		# make p full step, if not the last one
-		if i < steps - 1:
-			a, U = calculate_force_potential(pos, L)
-
-			# p = p - eps * grad(U)
-			vel = vel + dt * a
-
-	a, U = calculate_force_potential(pos, L)
-
-	# make the final p half step
-	# p = p - eps * grad(U) / 2
-	vel = vel + 0.5 * dt * U
-
-	print('done.')
-
-	return pos, vel, a, U
-
-def md_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	N, D = pos.shape
 	a = np.zeros((N, D))
 
@@ -368,7 +330,84 @@ def md_loop(L, pos, vel, steps, dt, T=None, incr=0):
 	kinetic = np.zeros(steps)
 	temp = np.zeros(steps)
 
-	print("Running dynamics ...")
+	print("Running dynamics [{} steps] ... ".format(steps), end='')
+
+	a, potential[0] = calculate_force_potential(pos, L)
+	kinetic[0], temp[0] = temperature_kinetic(vel)
+
+	# make momentum half step at the very begining
+	# p = p - eps * grad(U)/2
+	vel = vel + 0.5 * dt * a
+
+	for s in range(1, steps):
+		# rebound pbc positions
+		for d in range(D):
+			indices = np.where(pos[:, d] > L)
+			pos[indices, d] -= L
+			indices = np.where(pos[:, d] < 0)
+			pos[indices, d] += L
+
+		traj.append(pos.copy())
+
+		kinetic[s], temp[s] = temperature_kinetic(vel)
+
+		# make full q step
+		# q = q + eps * p 
+		pos = pos + dt * vel 
+
+		if T is None:
+			# NVE Ensemble
+			chi = 1
+		else:
+			# if temperature increment is specified
+			# and not the 0th step
+			# increment temperature every unit time
+			if incr and s and (dt * s) % 1 == 0:
+				T += incr
+				print('t =', dt*s, 'T =', T)
+			tempincr.append(T)
+
+			# NVT Ensemble
+			# velocity rescale factor
+			chi = np.sqrt(T/temp[s])
+
+		# make p full step, if not the last one
+		if s < steps - 1:
+			a, potential[s] = calculate_force_potential(pos, L)
+
+			# p = p - eps * grad(U)
+			vel = chi * vel + dt * a
+
+
+		# reset COM velocity
+		vcom = np.sum(vel, axis=0)/N
+		vel -= vcom/N
+
+
+	# make the final p half step
+	a, potential[-1] = calculate_force_potential(pos, L)
+
+	# p = p - eps * grad(U) / 2
+	vel = chi * vel + 0.5 * dt * a
+
+	kinetic[-1], temp[-1] = temperature_kinetic(vel)
+
+	print('done.')
+
+	return traj, vel, temp, potential, kinetic
+
+def vv_loop(L, pos, vel, steps, dt, T=None, incr=0):
+	N, D = pos.shape
+	a = np.zeros((N, D))
+
+	traj = []
+	tempincr = []
+
+	potential = np.zeros(steps)
+	kinetic = np.zeros(steps)
+	temp = np.zeros(steps)
+
+	print("Running dynamics [{} steps] ... ".format(steps))
 
 	for s in range(steps):
 		# rebound pbc positions
@@ -414,15 +453,13 @@ def md_loop(L, pos, vel, steps, dt, T=None, incr=0):
 		vcom = np.sum(vel, axis=0)/N
 		vel -= vcom/N
 
-	plot_energy(dt, steps, potential, kinetic, temp)
-
 	# if increment was not specified,
 	# return the measuered temperatures
 	if len(tempincr) != steps:
 		tempincr = temp
 	
 	# list of coords at each timesteps, final velocities, temp
-	return traj, vel, tempincr
+	return traj, vel, tempincr, potential, kinetic
 
 def plot_pos(pos, L):
 	plt.plot(pos[:, 0], pos[:, 1], 'ko', markersize=22)
@@ -444,8 +481,9 @@ def Problem_01():
 
 	vel = mb_velocities(N, D, 1.5)
 
-	# X, vel, T = md_loop(L, pos, vel, steps, dt)
-	X, vel, T = check_lf(L, pos, vel, steps, dt)
+	X, vel, T, U, K = vv_loop(L, pos, vel, steps, dt)
+
+	plot_energy(dt, steps, U, K, T)
 
 	animate(X, L, T, steps, dt)
 
@@ -469,7 +507,9 @@ def Problem_02():
 	# sigma * np.random.randn(...) + mu
 	vel = np.random.randn(N, D) / 10000
 
-	X, vel, T = check_lf(L, pos, vel, steps, dt)
+	X, vel, T, U, K = lf_loop(L, pos, vel, steps, dt)
+
+	plot_energy(dt, steps, U, K, T)
 
 	# rdf of last step
 	# radial_distribution(X[-1], L, L)
@@ -500,10 +540,12 @@ def Problem_03():
 	# sigma * np.random.randn(...) + mu
 	vel = np.random.randn(N, D) / 10000
 
-	X, vel, T = md_loop(L, pos, vel, steps, dt, 0.5, 0.1)
+	X, vel, T, U, K = lf_loop(L, pos, vel, steps, dt, 0.5, 0.1)
+
+	plot_energy(dt, steps, U, K, T)
 
 	# rdf of last step
-	radial_distribution(X[-1], L, L)
+	# radial_distribution(X[-1], L, L)
 
 	animate(X, L, T, steps, dt)
 
