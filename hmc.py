@@ -93,7 +93,7 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 		trial_pos, trial_vel, trial_temp, trial_U, trial_K = Xtraj[-1], velocities[-1], T[-1], U[-1], K[-1]
 
 		# weight for the trial
-		wt = model.mc_weight(trial_pos, trial_vel, trial_temp, trial_U, trial_K)
+		wt = model.mc_weight(trial_pos, -trial_vel, trial_temp, trial_U, trial_K)
 
 		# ratio of the weights = probability of the trial config
 		r = wt / w

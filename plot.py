@@ -118,7 +118,7 @@ def pos(pos, L):
 	plt.show()
 
 
-def animate(traj, L, T, steps, dt, intv=10):
+def animate(traj, L, T, steps, dt, intv=20):
 	fig = plt.figure(figsize=(8,8))
 	ax = plt.axes(xlim=(0, L), ylim=(0, L))
 	ax.add_patch(Rectangle((0,0),L,L,linewidth=2,edgecolor='b',facecolor='none'))
