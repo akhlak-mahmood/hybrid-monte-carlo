@@ -106,7 +106,8 @@ def HMC(model, MC, md_steps, target_temp=None):
 	return MC
 
 
-def Problem_01():
+if __name__=='__main__':
+
 	D = 3
 	N = 16
 	L = 4
@@ -138,83 +139,4 @@ def Problem_01():
 	plot.velocity_distribution(DYN['velocity'][-1])
 
 	plot.animate3D(DYN['position'], L, DYN['temperature'], steps, dt)
-
-
-def Problem_02():
-	N = 16
-	D = 2
-	L = 4
-
-	steps = 3000
-	dt = 0.005
-
-	pos = crystal_positions()
-	# plot.pos(pos, L)
-	# plot.radial_distribution(pos, L, L)
-
-	# Set tiny random velocities
-	# For normal distribution N(mu, sigma^2)
-	# sigma * np.random.randn(...) + mu
-	vel = np.random.randn(N, D) / 10000
-
-	model = LJ()
-
-	X, V, T, U, K = lf_loop(model, L, pos, vel, steps, dt)
-
-	plot.energy(dt, steps, T, U, K)
-
-	# rdf of last step
-	# plot.radial_distribution(X[-1], L, L)
-
-	plot.animate(X, L, T, steps, dt)
-
-	plot.velocity_distribution(V[-1])
-
-	# save last step positions
-	np.savetxt('problem-02.xyz', X[-1])
-
-def Problem_03():
-	N = 16
-	D = 2
-	L = 4
-
-	steps = 5000
-	dt = 0.01
-
-	# load problem-2 positions
-	pos = np.loadtxt('problem-02.xyz')
-
-	# plot.pos(pos, L)
-	# plot.radial_distribution(pos, L, L)
-
-	# Set tiny random velocities
-	# For normal distribution N(mu, sigma^2)
-	# sigma * np.random.randn(...) + mu
-	vel = np.random.randn(N, D) / 10000
-
-	model = LJ()
-
-	X, V, T, U, K = vv_loop(model, L, pos, vel, steps, dt, 0.5, 0.1)
-
-	plot.energy(dt, steps, T, U, K)
-
-	# rdf of last step
-	# plot.radial_distribution(X[-1], L, L)
-
-	plot.animate(X, L, T, steps, dt)
-
-	# plot.velocity_distribution(V[-1])
-
-
-if __name__=='__main__':
-	import sys 
-	if len(sys.argv) > 1:
-		if sys.argv[1] == '1':
-			Problem_01()
-		elif sys.argv[1] == '2':
-			Problem_02()
-		elif sys.argv[1] == '3':
-			Problem_03()
-	else:
-		print("Please specify problem number.")
 
