@@ -3,16 +3,27 @@ import numpy as np
 from scipy.stats import maxwell
 
 
-def init_dynamics(L, pos, vel, steps=1000, dt=0.01):
-	# initialize an empty dictionary with all the values 
-	# we will be calculating
+def init_dynamics(pos, vel, steps=1000, dt=0.01, L=None, Rho=None):
+	# initialize an empty dictionary for all the values 
+	# we will be calculating during the simulation
+
+	mass = 1.0
 
 	assert pos.shape == vel.shape
 
 	N, D = pos.shape
 
-	vol = L * L * L 
-	density = N / vol
+	if L is None and Rho is None:
+		raise ArgumentError('Either L or Rho must be given.')
+
+	elif Rho is None:
+		vol = L * L * L 
+		density = N / vol
+
+	elif L is None:
+		density = Rho
+		vol = N * mass / Rho
+		L = np.power(vol, 1.0/3.0)
 
 	MD = {
 		'length': L,

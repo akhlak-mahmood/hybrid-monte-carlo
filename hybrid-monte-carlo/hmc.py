@@ -57,7 +57,7 @@ def HMC(model, MC, md_steps, target_temp=None):
 		vel = utils.mb_velocities(N, D, 1.5)
 
 		# trial = make a small change using MD
-		MD = utils.init_dynamics(L, pos, vel, md_steps, dt)
+		MD = utils.init_dynamics(pos, vel, md_steps, dt, L)
 		MD = lf_loop(model, MD)
 
 		# weight for the trial
@@ -108,14 +108,6 @@ def HMC(model, MC, md_steps, target_temp=None):
 
 def Problem_01():
 	D = 3
-	# N = 32
-	# Rho = 0.841856
-	# mass = 1.0
-
-	# V = N * mass / Rho
-	# L = np.power(V, 1.0/3.0)
-
-
 	N = 16
 	L = 4
 
@@ -123,12 +115,15 @@ def Problem_01():
 	dt = 0.01
 
 	pos = utils.fcc_positions(N, L)
-	# plot.pos(pos, L)
+	plot.pos(pos, L)
 
 	vel = utils.mb_velocities(N, D, 1.5)
 
 	model = LJ()
-	DYN = utils.init_dynamics(L, pos, vel, steps, dt)
+	DYN = utils.init_dynamics(pos, vel, steps, dt, L)
+
+	print('volume = {}, density = {}'.format(DYN['volume'][0], DYN['density'][0]))
+	input('Press ENTER to continue ... ')
 
 	# DYN = lf_loop(model, DYN)
 	DYN = HMC(model, DYN, 15)
