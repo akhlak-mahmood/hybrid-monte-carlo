@@ -112,10 +112,17 @@ def radial_distribution(pos, L, resolution=100):
 	plt.show()
 
 def pos(pos, L):
-	plt.plot(pos[:, 0], pos[:, 1], 'ko', markersize=22)
-	plt.xlim(0, L)
-	plt.ylim(0, L)
-	plt.show()
+	N, D = pos.shape
+	if D == 3:
+		fig = plt.figure()
+		ax = Axes3D(fig)
+		ax.scatter3D(pos[:,0], pos[:,1], pos[:,2], marker='o', c='k', s=16*L)
+		plt.show()
+	else:
+		plt.plot(pos[:, 0], pos[:, 1], 'ko', markersize=22)
+		plt.xlim(0, L)
+		plt.ylim(0, L)
+		plt.show()
 
 
 def animate(traj, L, T, steps, dt, intv=20):
