@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import numpy as np
 
 import utils
@@ -180,9 +181,10 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	traj.append(pos.copy())
 	velocities.append(vel.copy())
 
-	print("Running Velocity-Verlet [{} steps] ... ".format(steps), end='')
-
 	for s in range(steps):
+		sys.stdout.write("\rRunning Velocity-Verlet [step {}] ... ".format(s))
+		sys.stdout.flush()
+
 		# rebound pbc positions
 		for d in range(D):
 			indices = np.where(pos[:, d] > L)

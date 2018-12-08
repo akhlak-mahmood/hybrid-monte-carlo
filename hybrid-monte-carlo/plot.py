@@ -153,7 +153,7 @@ def animate3D(traj, L, T, steps, dt, intv=10):
 	ax = fig.add_subplot(111, projection='3d')
 
 	title = ax.set_title('3D')
-	graph, = ax.plot(pos[:,0], pos[:,1], pos[:,2], 'ko', markersize=22)
+	graph, = ax.plot(pos[:,0], pos[:,1], pos[:,2], 'ko', markersize=20)
 
 	# Setting the axes properties
 	ax.set_xlim3d([0.0, L])
@@ -165,6 +165,16 @@ def animate3D(traj, L, T, steps, dt, intv=10):
 	ax.set_zlim3d([0.0, L])
 	ax.set_zlabel('Z')
 
+	# make the panes transparent
+	ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+	ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+	ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+
+	# make the grid lines transparent
+	ax.xaxis._axinfo["grid"]['color'] =  (1,1,1,0)
+	ax.yaxis._axinfo["grid"]['color'] =  (1,1,1,0)
+	ax.zaxis._axinfo["grid"]['color'] =  (1,1,1,0)
+
 	def update_graph(i):
 	    pos = traj[i]
 	    graph.set_data(pos[:,0], pos[:,1])
@@ -174,5 +184,12 @@ def animate3D(traj, L, T, steps, dt, intv=10):
 
 	ani = animation.FuncAnimation(fig, update_graph, steps, 
 	                               interval=intv, blit=True)
+
+	MOVIE = False
+
+	if MOVIE:
+		print('Saving {}.mp4 ... '.format(MOVIE), end = '')
+		ani.save('{}.mp4'.format(MOVIE), fps=10, extra_args=['-vcodec', 'libx264'])
+		print('done.')
 
 	plt.show()
