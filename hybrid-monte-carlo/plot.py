@@ -13,7 +13,14 @@ plt.rc('axes', labelsize=18)
 plt.rc('figure', figsize=(12,12))
 
 
-def energy(dt, steps, T, U, K, P):
+def energy(MD):
+	dt = MD['timestep']
+	steps = MD['steps']
+	T = MD['temperature']
+	U = MD['potential']
+	K = MD['kinetic']
+	P = MD['pressure']
+
 	time = [dt * i for i in range(steps)]
 
 	plt.subplot(4,1,1)

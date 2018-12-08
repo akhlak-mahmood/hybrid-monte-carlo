@@ -110,16 +110,17 @@ def Problem_01():
 	vel = utils.mb_velocities(N, D, 1.5)
 
 	model = LJ()
+	MD = utils.init_dynamics(L, pos, vel, steps, dt)
 
-	X, V, T, U, K, P = lf_loop(model, L, pos, vel, steps, dt)
+	MD = lf_loop(model, MD)
 	# X, V, T, U, K = HMC(model, L, pos, vel, steps, 5, dt)
 
-	plot.energy(dt, steps, T, U, K, P)
+	plot.energy(MD)
 
-	# plot.pos(X[-1], L)
-	plot.animate3D(X, L, T, steps, dt)
+	# plot.pos(MD['position'], L)
+	plot.animate3D(MD['position'], L, MD['temperature'], steps, dt)
 
-	plot.velocity_distribution(V[-1])
+	plot.velocity_distribution(MD['velocity'][-1])
 
 
 def Problem_02():

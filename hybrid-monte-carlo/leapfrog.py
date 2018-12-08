@@ -2,34 +2,40 @@ import sys
 import numpy as np
 
 
-def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
+def lf_loop(model, MD, target_temp=None, incr=0):
 	""" Hybrid monte carlo with leapfrog method.
 		Return history of the whole MD run and final velocities. """
 
+	L = MD['length']
+	steps = MD['steps']
+	dt = MD['timestep']
+
+	pos = MD['position'][0]
+	vel = MD['velocity'][0]
+
+	assert pos.shape == vel.shape
+
 	N, D = pos.shape
-	a = np.zeros((N, D))
-
-	vol = L * L * L 
-	density = N / vol
-
-	traj = []
-	velocities = []
-	tempincr = []
-
-	potential = np.zeros(steps)
-	kinetic = np.zeros(steps)
-	temp = np.zeros(steps)
-	pressure = np.zeros(steps)
-
-	traj.append(pos.copy())
-	velocities.append(vel.copy())
 
 	sys.stdout.write("Running Leapfrog [step {}] ... ".format(0))
 	sys.stdout.flush()
 
-	a, potential[0], virial = model.calculate_force_potential(pos, L)
-	kinetic[0], temp[0] = model.ke_temp(vel)
-	pressure[0] = density * temp[0] + virial / vol
+	vol = L * L * L 
+	density = N / vol
+	a, pot, vir = model.calculate_force_potential(pos, L)
+	ke, temp = model.ke_temp(vel)
+	pres = density * temp + vir / vol
+
+	MD['force'].append(a.copy())
+	MD['potential'][0] = pot.copy()
+	MD['virial'][0] = vir
+	MD['kinetic'][0] = ke
+	MD['temperature'][0] = temp
+	MD['target_temp'][0] = target_temp
+	MD['density'][0] = density
+	MD['volume'][0] = vol 
+	MD['pressure'][0] = pres.copy()
+
 
 	# make momentum half step at the very begining
 	# p = p - eps * grad(U)/2
@@ -46,14 +52,16 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 			indices = np.where(pos[:, d] < 0)
 			pos[indices, d] += L
 
-		kinetic[s], temp[s] = model.ke_temp(vel)
+		ke, temp = model.ke_temp(vel)
+		MD['kinetic'][s] = ke
+		MD['temperature'][s] = temp
 
 		# make full q step
 		# q = q + eps * p 
 		pos = pos + dt * vel 
-		traj.append(pos.copy())
+		MD['position'].append(pos.copy())
 
-		if T is None:
+		if target_temp is None:
 			# NVE Ensemble
 			chi = 1
 		else:
@@ -61,22 +69,31 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 			# and not the 0th step
 			# increment temperature every unit time
 			if incr and s and (dt * s) % 1 == 0:
-				T += incr
-				print('t =', dt*s, 'T =', T)
-			tempincr.append(T)
+				target_temp += incr
+				print('t =', dt*s, 'T =', target_temp)
 
 			# NVT Ensemble
 			# velocity rescale factor
-			chi = np.sqrt(T/temp[s])
+			chi = np.sqrt(target_temp/temp)
+
+		# record target temp for the current step
+		MD['target_temp'][s] = target_temp
+
+		MD['density'][s] = density
+		MD['volume'][s] = vol
+
+		pres = density * temp + vir / vol
+		MD['pressure'][s] = pres.copy()
 
 		# make p full step, if not the last one
 		if s < steps - 1:
-			a, potential[s], virial = model.calculate_force_potential(pos, L)
-			pressure[s] = density * temp[s] + virial / vol
-
-			# p = p - eps * grad(U)
+			a, pot, vir = model.calculate_force_potential(pos, L)
 			vel = chi * vel + dt * a
-			velocities.append(vel.copy())
+
+			MD['force'].append(a.copy())
+			MD['potential'][s] = pot.copy()
+			MD['virial'][s] = vir
+			MD['velocity'].append(vel.copy())
 
 
 		# reset COM velocity
@@ -85,16 +102,17 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 
 
 	# make the final p half step
-	a, potential[-1], virial = model.calculate_force_potential(pos, L)
-	pressure[-1] = density * temp[-1] + virial / vol
+	a, pot, vir = model.calculate_force_potential(pos, L)
 
 	# p = p - eps * grad(U) / 2
 	vel = chi * vel + 0.5 * dt * a
 
-	velocities.append(vel.copy())
-	kinetic[-1], temp[-1] = model.ke_temp(vel)
+	MD['force'].append(a.copy())
+	MD['potential'][s] = pot.copy()
+	MD['virial'][s] = vir
+	MD['velocity'].append(vel.copy())
 
 	print('done.')
 
-	return traj, velocities, temp, potential, kinetic, pressure
+	return MD
 

@@ -2,6 +2,29 @@
 import numpy as np 
 from scipy.stats import maxwell
 
+
+def init_dynamics(L, pos, vel, steps=1000, dt=0.01):
+	# initialize an empty dictionary with all the values 
+	# we will be calculating
+
+	return {
+		'length': L,
+		'timestep': dt,
+		'steps': steps,
+		'position': [pos.copy()],
+		'velocity': [vel.copy()],
+		'force': [],
+		'temperature': np.zeros(steps),
+		'target_temp': np.zeros(steps),
+		'kinetic': np.zeros(steps),
+		'potential': np.zeros(steps),
+		'pressure': np.zeros(steps),
+		'virial': np.zeros(steps),
+		'volume': np.zeros(steps),
+		'density': np.zeros(steps)
+	}
+
+
 def fcc_positions(N, L):
 	M = 1
 	n = 0
