@@ -20,9 +20,10 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 	potential = np.zeros(mc_steps)
 	kinetic = np.zeros(mc_steps)
 	temp = np.zeros(mc_steps)
+	pressure = np.zeros(mc_steps)
 
 	# find initial values
-	a, u = model.calculate_force_potential(pos, L)
+	a, u, p = model.calculate_force_potential(pos, L)
 	k, t = model.ke_temp(vel)
 
 	traj.append(pos.copy())
@@ -31,6 +32,7 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 	potential[0] = u 
 	kinetic[0] = k 
 	temp[0] = t
+	pressure[0] = p
 	
 	w = model.mc_weight(pos, vel, t, u, k)
 
@@ -41,7 +43,7 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 		Xtraj, velocities, T, U, K = lf_loop(model, L, pos, vel, md_steps, dt)
 		
 		# negate the momentum/vel to make the proposal symmetric
-		trial_pos, trial_vel, trial_temp, trial_U, trial_K = Xtraj[-1], velocities[-1], T[-1], U[-1], K[-1]
+		trial_pos, trial_vel, trial_temp, trial_U, trial_K, trial_pres = Xtraj[-1], velocities[-1], T[-1], U[-1], K[-1]
 
 		# weight for the trial
 		wt = model.mc_weight(trial_pos, -trial_vel, trial_temp, trial_U, trial_K)
@@ -56,6 +58,7 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 			t = trial_temp.copy()
 			u = trial_U.copy()
 			k = trial_K.copy()
+			p = trial_pres.copy()
 		
 		else:
 			# we are moving to the trial position with probability r
@@ -68,17 +71,19 @@ def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 				t = trial_temp.copy()
 				u = trial_U.copy()
 				k = trial_K.copy()
+				p = trial_pres.copy()
 
 		traj.append(pos.copy())
 		velocities.append(vel.copy())
 		potential[s] = u.copy()
 		kinetic[s] = k.copy()
 		temp[s] = t.copy()
+		pressure[s] = p.copy()
 
 		print('Metropolis done.')
 
 	# Metropolis trajectory, vel, T, U, K
-	return traj, velocities, temp, potential, kinetic
+	return traj, velocities, temp, potential, kinetic, pressure
 
 
 def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
@@ -88,6 +93,9 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	N, D = pos.shape
 	a = np.zeros((N, D))
 
+	vol = L * L * L 
+	density = N / vol
+
 	traj = []
 	velocities = []
 	tempincr = []
@@ -95,20 +103,26 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	potential = np.zeros(steps)
 	kinetic = np.zeros(steps)
 	temp = np.zeros(steps)
-
-	print("Running Leapfrog [{} steps] ... ".format(steps), end='')
+	pressure = np.zeros(steps)
 
 	traj.append(pos.copy())
 	velocities.append(vel.copy())
 
-	a, potential[0] = model.calculate_force_potential(pos, L)
+	sys.stdout.write("Running Leapfrog [step {}] ... ".format(0))
+	sys.stdout.flush()
+
+	a, potential[0], virial = model.calculate_force_potential(pos, L)
 	kinetic[0], temp[0] = model.ke_temp(vel)
+	pressure[0] = density * temp[0] + virial / vol
 
 	# make momentum half step at the very begining
 	# p = p - eps * grad(U)/2
 	vel = vel + 0.5 * dt * a
 
 	for s in range(1, steps):
+		sys.stdout.write("\rRunning Leapfrog [step {}] ... ".format(s))
+		sys.stdout.flush()
+
 		# rebound pbc positions
 		for d in range(D):
 			indices = np.where(pos[:, d] > L)
@@ -141,7 +155,8 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 
 		# make p full step, if not the last one
 		if s < steps - 1:
-			a, potential[s] = model.calculate_force_potential(pos, L)
+			a, potential[s], virial = model.calculate_force_potential(pos, L)
+			pressure[s] = density * temp[s] + virial / vol
 
 			# p = p - eps * grad(U)
 			vel = chi * vel + dt * a
@@ -154,7 +169,8 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 
 
 	# make the final p half step
-	a, potential[-1] = model.calculate_force_potential(pos, L)
+	a, potential[-1], virial = model.calculate_force_potential(pos, L)
+	pressure[-1] = density * temp[-1] + virial / vol
 
 	# p = p - eps * grad(U) / 2
 	vel = chi * vel + 0.5 * dt * a
@@ -164,7 +180,7 @@ def lf_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 
 	print('done.')
 
-	return traj, velocities, temp, potential, kinetic
+	return traj, velocities, temp, potential, kinetic, pressure
 
 def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	N, D = pos.shape
@@ -243,7 +259,7 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	print('done.')
 	
 	# list of coords at each timesteps, velocities, temp, PE, KE
-	return traj, velocities, pressure, potential, kinetic
+	return traj, velocities, tempincr, potential, kinetic, pressure
 
 def Problem_01():
 	D = 3
@@ -268,10 +284,10 @@ def Problem_01():
 
 	model = LJ()
 
-	X, V, T, U, K = vv_loop(model, L, pos, vel, steps, dt)
+	X, V, T, U, K, P = lf_loop(model, L, pos, vel, steps, dt)
 	# X, V, T, U, K = HMC(model, L, pos, vel, steps, 5, dt)
 
-	plot.energy(dt, steps, T, U, K)
+	plot.energy(dt, steps, T, U, K, P)
 
 	# plot.pos(X[-1], L)
 	plot.animate3D(X, L, T, steps, dt)

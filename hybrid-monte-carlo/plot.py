@@ -13,7 +13,7 @@ plt.rc('axes', labelsize=18)
 plt.rc('figure', figsize=(12,12))
 
 
-def energy(dt, steps, T, U, K):
+def energy(dt, steps, T, U, K, P):
 	time = [dt * i for i in range(steps)]
 
 	plt.subplot(4,1,1)
@@ -25,8 +25,8 @@ def energy(dt, steps, T, U, K):
 	plt.ylabel('$E_p$')
 
 	plt.subplot(4,1,3)
-	plt.plot(time, U+K)
-	plt.ylabel('$E_{tot}$')
+	plt.plot(time, P)
+	plt.ylabel('$Pressure$')
 
 	plt.subplot(4,1,4)
 	plt.plot(time, T)
