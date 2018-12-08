@@ -1,0 +1,36 @@
+\documentclass[aps,prl,reprint]{revtex4-1}
+\usepackage{blindtext}
+
+\begin{document}
+\title{Hamiltonian Monte Carlo study of Lennard Jones system at constant pressure and temperature}
+\author{Akhlak-Ul Mahmood}
+\email{amahmoo3@ncsu.edu}
+\affiliation{Department of Physics, NC State University}
+
+\begin{abstract}
+Molecular Dynamics (MD) simulations have become indispensable tools in many areas of science. However, the problem of using MD in statistical predictions is two fold. The discrete time integration schemes used in the deterministic algorithm of MD introduce sampling errors, and it fails in terms of exploring the configuration space ergodically. Monte Carlo (MC) methods are exact in principle and asymptotically sample from the correct statistical ensemble. In this letter I present the implications of the Hamiltonian Monte Carlo (HMC) method as a solution to these problems and use it to study the 3D Lennard Jones system at NPT ensemble.
+\end{abstract}
+
+\maketitle
+
+Ergodicity is one of the most important concepts of statistics. The accuracy of the predictions of the statistical methods highly depend on how ergodic the system is. A random process $X(t)$ is ergodic if all of its statistics can be determined from a sample function of the process, i.e., its ensemble average is equal to its time average. This can be illustrated by an example. Suppose we want to find out the most visited park in a city. We could look at all the parks at some time, see how many people are in park A, how many in park B then make a decision. The other method would be to randomly select a group of people and follow them over a long period of time, say for a year, then see which park they visit the most. The first prediction is based on ensemble average at a certain time, the prediction from the second method is the time average for a group of people. Would they be the same? Most probably not. The prediction from the ensemble average is not valid other than that certain time, whereas the prediction from the time average may not be representative of all the people of the city. One of the classic examples of an ergodic system is a rolling die. Suppose in one method, we let 1000 people roll a fair die at the same time, add the outputs together and divide that by 1000 to find the average output. In the second method, we roll one fair die 1000 times and find the average output in the same way. The results will be identical within the range of statistical error. They would asymptotically reach the same conclusion if we increase the number from 1000 to infinity. First example is a classic case of human population not being ergodic, same is true for financial markets. Any kind of prediction we get using statistics, where we study a property to predict about a different one, therefore, depends on how ergodic the system we are studying is. A precondition for ergodicity is that the system has to be stationary over long time period, no net growth or loss can happen other than random fluctuations. 
+
+Molecular Dynamics is not ergodic just like the first example. The primary goal of molecular simulations are to correctly sample the phase space. However, if the system under study is not stationary, the MD simulation will be trapped in a subset of the configuration space, failing to converge to its unique invariant ensemble average asymptotically.\cite{Neal2012} Currently this problem is taken care of by running multiple simulations from a number of different initial configurations then averaging the predicted results.\cite{Calvo2002} MD tends to predict accurately in NVE or microcanonical ensembles. However the systems we are normally interested for simulations are in NVT or NPT ensembles, which doesn't preserve ergodicity since it violets the precondition.
+
+% Proposed methods:
+Many different methods have been proposed to overcome this fundamental problem. Langevin Monte Carlo adds a stochastic part to the MD evolution process. Force Bias MC uses some guiding algorithm to the sampling process. But both of these methods suffer from very short time evolution due to the computational expenses. Extended System Method (ESM) introduces an additional dynamical variable, known as effective mass, to the Hamiltonian to represent a heat or pressure reservoir to maintain NPT ensemble. But it can show nonphysical behavior because of very large relaxation time.\cite{Cho1992} Duane, Kennedy, Pendleton, and Roweth united the MC and MD in their seminal paper as a solution to these problem which they termed as "Hybrid Monte Carlo" method.\cite{Duane1987}
+
+Leimkuhler and Reich (2004) described how to quantify the errors that propagate in dynamics. The \textit{local error} is the error after one step, whereas the \textit{global error} is the error that adds up after simulating after a fixed number of steps. The leapfrog method has a local error of the order $\epsilon ^ 3$ and a global error of $\epsilon ^ 2$. Any reversible method must have a even order global error, and as a result leapfrog method is reversible.
+
+HMC 
+
+In summary, by using Hamiltonian Monte Carlo, I have established that the ergodicity of the LJ systems improves and we can get considerably better results without expending too much computational resources. 
+
+
+% Tell bibtex which bibliography style to use
+\bibliographystyle{apsrev4-1}
+
+% Tell bibtex which .bib file to use (this one is some example file in TexLive's file tree)
+\bibliography{Citations.bib}
+
+\end{document}

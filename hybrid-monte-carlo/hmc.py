@@ -1,63 +1,13 @@
 #!/usr/bin/env python3
-import numpy as np
-from scipy.stats import maxwell, linregress
 
+import numpy as np
+
+import utils
 import plot
 from lennardjones import LJ, SIG
 from simpleharmonic import SHO
 
 from pdb import set_trace
-
-def no_overlap(D, pos, i):
-	""" Check if there's overlap between ith atoms
-		With the other atoms. """
-
-	for j in range(0, i):
-		r2 = 0
-		for d in range(D):
-			dx = pos[i, d] - pos[j, d]
-			r2 += dx * dx
-
-		if r2 < (1.16 * SIG)**2:
-			return False
-	return True
-
-def random_positions(N, D, L):
-	pos = -1 * np.zeros((N, D))
-
-	i = 0
-	while True:
-		for d in range(D):
-			pos[i, d] = np.random.randint(1, L)
-
-		if no_overlap(D, pos, i):
-			i += 1
-
-		if i == N:
-			break
-
-	return pos
-
-def crystal_positions():
-	pos = -1 * np.zeros((16, 2))
-	for n in range(16):
-		pos[n][0] = int(n/4) + 0.5
-		pos[n][1] = (n % 4) + 0.5
-
-	return pos
-
-def mb_velocities(N, D, vmax):
-	vel = np.zeros((N, D))
-
-	for i in range(N):
-		for d in range(D):
-			while True:
-				v = maxwell.rvs(loc=0, scale=1) - vmax
-				if abs(v) <= vmax:
-					vel[i, d] = v
-					break
-	return vel
-
 
 def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
 	""" Return N Metropolis configuration samples from initial
@@ -288,27 +238,36 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	return traj, velocities, tempincr, potential, kinetic
 
 def Problem_01():
+	# N = 32
+	# Rho = 0.841856
+	# mass = 1.0
+
+	# V = N * mass / Rho
+	# L = np.power(V, 1.0/3.0)
+
 	N = 16
-	D = 2
+	D = 3
 	L = 10
+
 
 	steps = 3000
 	dt = 0.01
 
-	pos = random_positions(N, D, L)
-	plot.pos(pos, L)
+	pos = utils.fcc_positions(N, L)
+	# plot.pos(pos, L)
 
-	vel = mb_velocities(N, D, 1.5)
+	vel = utils.mb_velocities(N, D, 1.5)
 
 	model = LJ()
 
-	# X, vel, T, U, K = vv_loop(L, pos, vel, steps, dt)
-	X, V, T, U, K = HMC(model, L, pos, vel, steps, 5, dt)
+	X, V, T, U, K = vv_loop(model, L, pos, vel, steps, dt)
+	# X, V, T, U, K = HMC(model, L, pos, vel, steps, 5, dt)
 
 	plot.energy(dt, steps, T, U, K)
 
-	plot.animate(X, L, T, steps, dt)
+	# plot.animate(X, L, T, steps, dt)
 
+	plot.pos(X[-1], L)
 	plot.velocity_distribution(V[-1])
 
 
