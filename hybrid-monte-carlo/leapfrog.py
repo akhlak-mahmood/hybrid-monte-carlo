@@ -17,9 +17,6 @@ def lf_loop(model, MD, target_temp=None, incr=0):
 
 	N, D = pos.shape
 
-	sys.stdout.write("Running Leapfrog [step {}] ... ".format(0))
-	sys.stdout.flush()
-
 	vol = L * L * L 
 	density = N / vol
 	a, pot, vir = model.calculate_force_potential(pos, L)
@@ -42,8 +39,9 @@ def lf_loop(model, MD, target_temp=None, incr=0):
 	vel = vel + 0.5 * dt * a
 
 	for s in range(1, steps):
-		sys.stdout.write("\rRunning Leapfrog [step {}] ... ".format(s))
-		sys.stdout.flush()
+		if s % 100 == 0:
+			sys.stdout.write("\rRunning Leapfrog [step {}] ... ".format(s+1))
+			sys.stdout.flush()
 
 		# rebound pbc positions
 		for d in range(D):
@@ -112,7 +110,8 @@ def lf_loop(model, MD, target_temp=None, incr=0):
 	MD['virial'][s] = vir
 	MD['velocity'].append(vel.copy())
 
-	print('done.')
+	if s % 100 == 0:
+		print('done.')
 
 	return MD
 

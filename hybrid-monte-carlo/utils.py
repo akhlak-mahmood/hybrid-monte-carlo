@@ -7,7 +7,14 @@ def init_dynamics(L, pos, vel, steps=1000, dt=0.01):
 	# initialize an empty dictionary with all the values 
 	# we will be calculating
 
-	return {
+	assert pos.shape == vel.shape
+
+	N, D = pos.shape
+
+	vol = L * L * L 
+	density = N / vol
+
+	MD = {
 		'length': L,
 		'timestep': dt,
 		'steps': steps,
@@ -23,6 +30,12 @@ def init_dynamics(L, pos, vel, steps=1000, dt=0.01):
 		'volume': np.zeros(steps),
 		'density': np.zeros(steps)
 	}
+
+	MD['density'][0] = density
+	MD['volume'][0] = vol
+
+	return MD
+
 
 
 def fcc_positions(N, L):

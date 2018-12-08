@@ -12,80 +12,98 @@ from leapfrog import lf_loop
 
 from pdb import set_trace
 
-def HMC(model, L, pos, vel, mc_steps, md_steps, dt):
+def HMC(model, MC, md_steps, target_temp=None):
 	""" Return N Metropolis configuration samples from initial
 		Positions and momenta """
 
-	traj = []
-	velocities = []
+	L = MC['length']
+	mc_steps = MC['steps']
+	dt = MC['timestep']
 
-	potential = np.zeros(mc_steps)
-	kinetic = np.zeros(mc_steps)
-	temp = np.zeros(mc_steps)
-	pressure = np.zeros(mc_steps)
+	pos = MC['position'][0]
+	vel_orig = MC['velocity'][0]
+
+	assert pos.shape == vel_orig.shape
+
+	N, D = pos.shape
+
+	vol = MC['volume'][0]
+	density = MC['density'][0]
 
 	# find initial values
-	a, u, p = model.calculate_force_potential(pos, L)
-	k, t = model.ke_temp(vel)
+	a, pot, vir = model.calculate_force_potential(pos, L)
+	ke, temp = model.ke_temp(vel_orig)
+	pres = density * temp + vir / vol
 
-	traj.append(pos.copy())
-	velocities.append(vel.copy())
+	MC['force'].append(a.copy())
+	MC['potential'][0] = pot.copy()
+	MC['virial'][0] = vir
+	MC['kinetic'][0] = ke
+	MC['temperature'][0] = temp
+	MC['target_temp'][0] = target_temp
+	MC['pressure'][0] = pres.copy()
 
-	potential[0] = u 
-	kinetic[0] = k 
-	temp[0] = t
-	pressure[0] = p
-	
-	w = model.mc_weight(pos, vel, t, u, k)
+	MC['accepted'] = 0
+	MC['rejected'] = 0
+
+	# calculate initial weight
+	w = model.mc_weight(pos, vel_orig, temp, pot, ke)
 
 	for s in range(1, mc_steps):
-		print("Running Metropolis [{}/{}] ... ".format(s, mc_steps))
- 
-		# make a small change using MD
-		Xtraj, velocities, T, U, K = lf_loop(model, L, pos, vel, md_steps, dt)
-		
-		# negate the momentum/vel to make the proposal symmetric
-		trial_pos, trial_vel, trial_temp, trial_U, trial_K, trial_pres = Xtraj[-1], velocities[-1], T[-1], U[-1], K[-1]
+		sys.stdout.write("\rRunning Hybrid [step {}] ... ".format(s+1))
+		sys.stdout.flush()
+
+		# markov chain, reinit velocities
+		vel = utils.mb_velocities(N, D, 1.5)
+
+		# trial = make a small change using MD
+		MD = utils.init_dynamics(L, pos, vel, md_steps, dt)
+		MD = lf_loop(model, MD)
 
 		# weight for the trial
-		wt = model.mc_weight(trial_pos, -trial_vel, trial_temp, trial_U, trial_K)
+		wt = model.mc_weight(MD['position'][-1], MD['velocity'][-1],
+			MD['temperature'][-1], MD['potential'][-1], MD['kinetic'][-1])
 
 		# ratio of the weights = probability of the trial config
 		r = wt / w
 		
-		if r >= 1:
+		# we are moving to the trial position with probability r
+		# i.e. if r >= 1 or the generated random number is less than r
+		if r >= 1 or np.random.rand() < r:
 			w = wt
-			pos = trial_pos.copy()
-			vel = trial_vel.copy()
-			t = trial_temp.copy()
-			u = trial_U.copy()
-			k = trial_K.copy()
-			p = trial_pres.copy()
-		
+			pos = MC['position'][-1].copy()
+			MC['accepted'] += 1
+			MC['position'].append(MD['position'][-1].copy())
+			MC['velocity'].append(MD['velocity'][-1].copy())
+			MC['force'].append(MD['force'][-1].copy())
+
+			MC['potential'][s] = MD['potential'][-1].copy()
+			MC['kinetic'][s] = MD['kinetic'][-1].copy()
+			MC['temperature'][s] = MD['temperature'][-1].copy()
+			MC['pressure'][s] = MD['pressure'][-1].copy()
+			MC['virial'][s] = MD['virial'][-1].copy()
+
+		# MC rejected, use the previous values
 		else:
-			# we are moving to the trial position with probability r
-			# i.e. only if the generated random no is less than r
-			# eq. r = 0.2, then prob of generating a number less than 0.2 is rand() < 0.2
-			if np.random.rand() < r:
-				w = wt
-				pos = trial_pos.copy()
-				vel = trial_vel.copy()
-				t = trial_temp.copy()
-				u = trial_U.copy()
-				k = trial_K.copy()
-				p = trial_pres.copy()
+			MC['rejected'] += 1
+			MC['position'].append(MC['position'][-1].copy())
+			MC['velocity'].append(MC['velocity'][-1].copy())
+			MC['force'].append(MC['force'][-1].copy())
 
-		traj.append(pos.copy())
-		velocities.append(vel.copy())
-		potential[s] = u.copy()
-		kinetic[s] = k.copy()
-		temp[s] = t.copy()
-		pressure[s] = p.copy()
+			MC['potential'][s] = MC['potential'][s-1].copy()
+			MC['kinetic'][s] = MC['kinetic'][s-1].copy()
+			MC['temperature'][s] = MC['temperature'][s-1].copy()
+			MC['pressure'][s] = MC['pressure'][s-1].copy()
+			MC['virial'][s] = MC['virial'][s-1].copy()			
 
-		print('Metropolis done.')
+		MC['target_temp'][s] = target_temp
+		MC['density'][s] = density
+		MC['volume'][s] = vol
 
-	# Metropolis trajectory, vel, T, U, K
-	return traj, velocities, temp, potential, kinetic, pressure
+	sys.stdout.write("\rMetropolis done [{} steps].\n".format(s))
+	sys.stdout.flush()
+
+	return MC
 
 
 def Problem_01():
@@ -110,17 +128,21 @@ def Problem_01():
 	vel = utils.mb_velocities(N, D, 1.5)
 
 	model = LJ()
-	MD = utils.init_dynamics(L, pos, vel, steps, dt)
+	DYN = utils.init_dynamics(L, pos, vel, steps, dt)
 
-	MD = lf_loop(model, MD)
-	# X, V, T, U, K = HMC(model, L, pos, vel, steps, 5, dt)
+	# DYN = lf_loop(model, DYN)
+	DYN = HMC(model, DYN, 15)
 
-	plot.energy(MD)
+	np.save('dynamics.npy', DYN)
 
-	# plot.pos(MD['position'], L)
-	plot.animate3D(MD['position'], L, MD['temperature'], steps, dt)
+	print('Acceptance/Rejection = {}/{}'.format(DYN['accepted'], DYN['rejected']))
 
-	plot.velocity_distribution(MD['velocity'][-1])
+	plot.energy(DYN)
+
+	plot.pos(DYN['position'][-1], L)
+	plot.velocity_distribution(DYN['velocity'][-1])
+
+	plot.animate3D(DYN['position'], L, DYN['temperature'], steps, dt)
 
 
 def Problem_02():
