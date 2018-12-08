@@ -144,3 +144,35 @@ def animate(traj, L, T, steps, dt, intv=20):
 							   frames=steps, interval=intv, blit=True)
 	plt.show()
 
+
+
+def animate3D(traj, L, T, steps, dt, intv=10):
+	pos = traj[0]
+
+	fig = plt.figure(figsize=(12,12))
+	ax = fig.add_subplot(111, projection='3d')
+
+	title = ax.set_title('3D')
+	graph, = ax.plot(pos[:,0], pos[:,1], pos[:,2], 'ko', markersize=22)
+
+	# Setting the axes properties
+	ax.set_xlim3d([0.0, L])
+	ax.set_xlabel('X')
+
+	ax.set_ylim3d([0.0, L])
+	ax.set_ylabel('Y')
+
+	ax.set_zlim3d([0.0, L])
+	ax.set_zlabel('Z')
+
+	def update_graph(i):
+	    pos = traj[i]
+	    graph.set_data(pos[:,0], pos[:,1])
+	    graph.set_3d_properties(pos[:,2])
+	    title.set_text('Time={0:.1f}, Temp={1:.1f}'.format(i*dt, T[i]))
+	    return title, graph, 
+
+	ani = animation.FuncAnimation(fig, update_graph, steps, 
+	                               interval=intv, blit=True)
+
+	plt.show()

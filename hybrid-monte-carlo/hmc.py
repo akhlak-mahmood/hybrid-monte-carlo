@@ -265,9 +265,9 @@ def Problem_01():
 
 	plot.energy(dt, steps, T, U, K)
 
-	# plot.animate(X, L, T, steps, dt)
+	# plot.pos(X[-1], L)
+	plot.animate3D(X, L, T, steps, dt)
 
-	plot.pos(X[-1], L)
 	plot.velocity_distribution(V[-1])
 
 
