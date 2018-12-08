@@ -22,6 +22,7 @@ class LJ(object):
 
 		F = np.zeros((N, D))
 		U = np.zeros(N)
+		virial = 0.0
 
 		# for each pair
 		for i in range(N-1):
@@ -55,8 +56,10 @@ class LJ(object):
 					F[i, :] += sij * f
 					F[j, :] -= sij * f
 
-		# acceleration, average pot energy
-		return F/mass, np.sum(U)/N
+					virial -= rij * f
+
+		# acceleration, average pot energy, virial const
+		return F/mass, np.sum(U)/N, -virial/D
 
 	def ke_temp(self, vel):
 		N, D = vel.shape

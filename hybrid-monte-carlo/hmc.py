@@ -170,6 +170,9 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	N, D = pos.shape
 	a = np.zeros((N, D))
 
+	vol = L * L * L
+	density = N/vol
+
 	traj = []
 	velocities = []
 	tempincr = []
@@ -177,6 +180,7 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	potential = np.zeros(steps)
 	kinetic = np.zeros(steps)
 	temp = np.zeros(steps)
+	pressure = np.zeros(steps)
 
 	traj.append(pos.copy())
 	velocities.append(vel.copy())
@@ -217,7 +221,9 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 		vel = chi * vel + 0.5 * a * dt
 
 		# find forces
-		a, potential[s] = model.calculate_force_potential(pos, L)
+		a, potential[s], virial = model.calculate_force_potential(pos, L)
+
+		pressure[s] = density * temp[s] + virial / vol
 
 		# velocity verlet, after force
 		vel += 0.5 * a * dt
@@ -237,9 +243,10 @@ def vv_loop(model, L, pos, vel, steps, dt, T=None, incr=0):
 	print('done.')
 	
 	# list of coords at each timesteps, velocities, temp, PE, KE
-	return traj, velocities, tempincr, potential, kinetic
+	return traj, velocities, pressure, potential, kinetic
 
 def Problem_01():
+	D = 3
 	# N = 32
 	# Rho = 0.841856
 	# mass = 1.0
@@ -247,10 +254,9 @@ def Problem_01():
 	# V = N * mass / Rho
 	# L = np.power(V, 1.0/3.0)
 
-	N = 16
-	D = 3
-	L = 10
 
+	N = 16
+	L = 4
 
 	steps = 3000
 	dt = 0.01
