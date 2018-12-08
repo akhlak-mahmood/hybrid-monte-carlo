@@ -17,7 +17,7 @@ def init_dynamics(pos, vel, steps=1000, dt=0.01, L=None, Rho=None):
 		raise ArgumentError('Either L or Rho must be given.')
 
 	elif Rho is None:
-		vol = L * L * L 
+		vol = L**D
 		density = N / vol
 
 	elif L is None:
@@ -79,6 +79,8 @@ def fcc_positions(N, L):
 def no_overlap(D, pos, i):
 	""" Check if there's overlap between ith atoms
 		With the other atoms. """
+
+	SIG = 1.0
 
 	for j in range(0, i):
 		r2 = 0

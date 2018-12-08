@@ -58,7 +58,7 @@ def HMC(model, MC, md_steps, target_temp=None):
 
 		# trial = make a small change using MD
 		MD = utils.init_dynamics(pos, vel, md_steps, dt, L)
-		MD = lf_loop(model, MD)
+		MD = lf_loop(model, MD, target_temp)
 
 		# weight for the trial
 		wt = model.mc_weight(MD['position'][-1], MD['velocity'][-1],
@@ -116,7 +116,7 @@ if __name__=='__main__':
 	dt = 0.01
 
 	pos = utils.fcc_positions(N, L)
-	plot.pos(pos, L)
+	plot.radial_distribution(pos, L)
 
 	vel = utils.mb_velocities(N, D, 1.5)
 
@@ -127,7 +127,7 @@ if __name__=='__main__':
 	input('Press ENTER to continue ... ')
 
 	# DYN = lf_loop(model, DYN)
-	DYN = HMC(model, DYN, 15)
+	DYN = HMC(model, DYN, 15, 1)
 
 	np.save('dynamics.npy', DYN)
 
@@ -136,6 +136,8 @@ if __name__=='__main__':
 	plot.energy(DYN)
 
 	plot.pos(DYN['position'][-1], L)
+	plot.radial_distribution(DYN['position'][-1], L)
+
 	plot.velocity_distribution(DYN['velocity'][-1])
 
 	plot.animate3D(DYN['position'], L, DYN['temperature'], steps, dt)
