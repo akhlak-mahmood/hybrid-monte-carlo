@@ -77,7 +77,12 @@ def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, inc
 
 			# increase very slowly, otherwise it will be chaos
 			temp_inc = (target_temp - temp) / increment_factor
-			chi = np.sqrt(temp_inc/temp)
+			temp_inc = temp + temp_inc
+			try:
+				chi = np.sqrt(temp_inc/temp)
+			except:
+				import pdb
+				pdb.set_trace()
 
 
 		# record target temp for the current step
@@ -101,7 +106,8 @@ def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, inc
 			# Barostat
 			# increase very slowly, otherwise it will be chaos
 			pres_inc = (target_pres - pres) / increment_factor
-			target_vol = vir / (pres + pres_inc - density * temp)
+			pres_inc = pres + pres_inc
+			target_vol = vir / (pres_inc - density * temp)
 			target_length = np.power(np.abs(target_vol), 1.0/D)
 			psi = target_length / L
 

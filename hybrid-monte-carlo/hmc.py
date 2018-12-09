@@ -132,8 +132,8 @@ def main():
 	N = 32
 	mass = 1.0
 
-	steps = 1000
-	dt = 0.001
+	steps = 5000
+	dt = 0.01
 
 	density = 0.5
 	vol = N * mass / density
@@ -162,7 +162,7 @@ def main():
 
 	plot.velocity_distribution(NTP['velocity'][-1])
 
-	plot.animate3D(NTP['position'], L+2, NTP['temperature'], steps, dt)
+	plot.animate3D(NTP['position'], L, NTP['temperature'], steps, dt)
 
 
 def run():
