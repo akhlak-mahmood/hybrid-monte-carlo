@@ -1,4 +1,4 @@
-
+import sys
 import numpy as np 
 from scipy.stats import maxwell
 
@@ -97,11 +97,19 @@ def random_positions(N, D, L):
 
 	i = 0
 	while True:
+		lap = 0
 		for d in range(D):
 			pos[i, d] = np.random.randint(1, L)
 
+		sys.stdout.write("\rplacing atom {}, overlap = {} ... ".format(i, lap))
+		sys.stdout.flush()
+
 		if no_overlap(D, pos, i):
 			i += 1
+			print('done.')
+			sys.stdout.flush()
+		else:
+			lap += 1
 
 		if i == N:
 			break

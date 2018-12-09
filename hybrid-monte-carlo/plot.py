@@ -153,7 +153,7 @@ def animate(traj, L, T, steps, dt, intv=20):
 
 
 
-def animate3D(traj, L, T, steps, dt, intv=10):
+def animate3D(traj, L, T, steps, dt, intv=20):
 	pos = traj[0]
 
 	fig = plt.figure(figsize=(12,12))

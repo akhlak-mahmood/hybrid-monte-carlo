@@ -50,7 +50,8 @@ def HMC(model, MC, md_steps, target_temp=None):
 	w = model.mc_weight(pos, vel_orig, temp, pot, ke)
 
 	for s in range(1, mc_steps):
-		sys.stdout.write("\rRunning Hybrid [step {}] ... ".format(s+1))
+		sys.stdout.write("\rRunning Hybrid [step {0}] accepted {1:.2f}% ... ".format(s+1,
+			MC['accepted']/s))
 		sys.stdout.flush()
 
 		# markov chain, reinit velocities
@@ -106,13 +107,32 @@ def HMC(model, MC, md_steps, target_temp=None):
 	return MC
 
 
-if __name__=='__main__':
+def acceptance_run(dt, md_steps):
+	D = 3
+	N = 16
+	L = 4
+
+	steps = 1000
+	print("Running dt = {0}, steps = {1}  ... ".format(dt, steps))
+
+	pos = utils.fcc_positions(N, L)
+	vel = utils.mb_velocities(N, D, 1.5)
+	model = LJ()
+	DYN = utils.init_dynamics(pos, vel, steps, dt, L)
+
+	res = HMC(model, DYN, md_steps)['accepted']
+
+	print((dt, steps, res))
+
+	return res
+
+def main():
 
 	D = 3
 	N = 16
 	L = 4
 
-	steps = 3000
+	steps = 1000
 	dt = 0.01
 
 	pos = utils.fcc_positions(N, L)
@@ -140,5 +160,13 @@ if __name__=='__main__':
 
 	plot.velocity_distribution(DYN['velocity'][-1])
 
-	plot.animate3D(DYN['position'], L, DYN['temperature'], steps, dt)
+	#plot.animate3D(DYN['position'], L, DYN['temperature'], steps, dt)
 
+
+res = []
+for dt in np.arange(0.01, 0.5, 0.01):
+	for steps in np.arange(5, 21, 1):
+		acceptance = acceptance_run(dt, steps)
+		res.append((dt, steps, acceptance))
+
+np.save('acceptance.npy', res)
