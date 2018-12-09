@@ -113,7 +113,7 @@ def acceptance_run(dt, md_steps):
 	L = 4
 
 	steps = 1000
-	print("Running dt = {0}, steps = {1}  ... ".format(dt, steps))
+	print("Running dt = {0}, steps = {1}  ... ".format(dt, md_steps))
 
 	pos = utils.fcc_positions(N, L)
 	vel = utils.mb_velocities(N, D, 1.5)
@@ -122,7 +122,7 @@ def acceptance_run(dt, md_steps):
 
 	res = HMC(model, DYN, md_steps)['accepted']
 
-	print((dt, steps, res))
+	print((dt, md_steps, res))
 
 	return res
 
@@ -163,10 +163,14 @@ def main():
 	#plot.animate3D(DYN['position'], L, DYN['temperature'], steps, dt)
 
 
-res = []
-for dt in np.arange(0.01, 0.5, 0.01):
-	for steps in np.arange(5, 21, 1):
-		acceptance = acceptance_run(dt, steps)
-		res.append((dt, steps, acceptance))
+def run():
+	res = []
+	for dt in np.arange(0.01, 0.5, 0.01):
+		for steps in np.arange(5, 21, 1):
+			acceptance = acceptance_run(dt, steps)
+			res.append((dt, steps, acceptance))
 
-np.save('acceptance.npy', res)
+	np.save('acceptance.npy', res)
+
+
+run()
