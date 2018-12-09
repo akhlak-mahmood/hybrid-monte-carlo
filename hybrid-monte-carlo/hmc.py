@@ -50,7 +50,7 @@ def HMC(model, MC, md_steps, target_temp=None):
 	w = model.mc_weight(pos, vel_orig, temp, pot, ke)
 
 	for s in range(1, mc_steps):
-		sys.stdout.write("\rRunning Hybrid [step {0}] accepted {1:.2f}% ... ".format(s+1,
+		sys.stdout.write("\rRunning Hybrid [step {0}] acceptance {1:.2f} ... ".format(s+1,
 			MC['accepted']/s))
 		sys.stdout.flush()
 
@@ -129,25 +129,28 @@ def acceptance_run(dt, md_steps):
 def main():
 
 	D = 3
-	N = 16
-	L = 4
+	N = 32
+	mass = 1.0
 
-	steps = 1000
-	dt = 0.01
+	steps = 100
+	dt = 0.02
+
+	density = 0.6
+	vol = N * mass / density
+	L = np.power(vol, 1.0/3.0)
 
 	pos = utils.fcc_positions(N, L)
-	plot.radial_distribution(pos, L)
-
 	vel = utils.mb_velocities(N, D, 1.5)
 
-	model = LJ()
 	DYN = utils.init_dynamics(pos, vel, steps, dt, L)
-
-	print('volume = {}, density = {}'.format(DYN['volume'][0], DYN['density'][0]))
+	print('length = {}, volume = {}, density = {}'.format(DYN['length'], DYN['volume'][0], DYN['density'][0]))
+	plot.pos(pos, L)
 	input('Press ENTER to continue ... ')
 
+	model = LJ()
+
 	# DYN = lf_loop(model, DYN)
-	DYN = HMC(model, DYN, 15, 1)
+	DYN = HMC(model, DYN, 10, 1)
 
 	np.save('dynamics.npy', DYN)
 
@@ -173,4 +176,4 @@ def run():
 	np.save('acceptance.npy', res)
 
 
-run()
+main()
