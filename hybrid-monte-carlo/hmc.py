@@ -149,8 +149,7 @@ def main():
 
 	model = LJ()
 
-	NVT = lf_loop(model, DYN, target_temp=1)
-	NTP = lf_loop(model, NVT, target_temp=1, target_pres=2)
+	NTP = lf_loop(model, DYN, target_temp=1, target_pres=2)
 	#DYN = HMC(model, DYN, 10, 1)
 
 	np.save('npt-lf.npy', NTP)
