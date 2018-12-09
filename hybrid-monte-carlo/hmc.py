@@ -132,10 +132,10 @@ def main():
 	N = 32
 	mass = 1.0
 
-	steps = 100
-	dt = 0.02
+	steps = 1000
+	dt = 0.001
 
-	density = 0.6
+	density = 0.5
 	vol = N * mass / density
 	L = np.power(vol, 1.0/3.0)
 
@@ -144,26 +144,26 @@ def main():
 
 	DYN = utils.init_dynamics(pos, vel, steps, dt, L)
 	print('length = {}, volume = {}, density = {}'.format(DYN['length'], DYN['volume'][0], DYN['density'][0]))
-	plot.pos(pos, L)
+	# plot.pos(pos, L)
 	input('Press ENTER to continue ... ')
 
 	model = LJ()
 
-	# DYN = lf_loop(model, DYN)
-	DYN = HMC(model, DYN, 10, 1)
+	NVT = lf_loop(model, DYN, target_temp=1)
+	NTP = lf_loop(model, NVT, target_temp=1, target_pres=2)
+	#DYN = HMC(model, DYN, 10, 1)
 
-	np.save('dynamics.npy', DYN)
+	np.save('npt-lf.npy', NTP)
 
-	print('Acceptance/Rejection = {}/{}'.format(DYN['accepted'], DYN['rejected']))
+	plot.energy(NTP)
 
-	plot.energy(DYN)
+	plot.pos(NTP['position'][-1], L)
 
-	plot.pos(DYN['position'][-1], L)
-	plot.radial_distribution(DYN['position'][-1], L)
+	plot.radial_distribution(NTP['position'][-1], L)
 
-	plot.velocity_distribution(DYN['velocity'][-1])
+	plot.velocity_distribution(NTP['velocity'][-1])
 
-	#plot.animate3D(DYN['position'], L, DYN['temperature'], steps, dt)
+	plot.animate3D(NTP['position'], L+2, NTP['temperature'], steps, dt)
 
 
 def run():

@@ -1,8 +1,9 @@
 import sys
 import numpy as np
 
+np.seterr(all='raise')
 
-def lf_loop(model, MD, target_temp=None, incr=0):
+def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, increment_factor=20.0):
 	""" Hybrid monte carlo with leapfrog method.
 		Return history of the whole MD run and final velocities. """
 
@@ -66,22 +67,55 @@ def lf_loop(model, MD, target_temp=None, incr=0):
 			# if temperature increment is specified
 			# and not the 0th step
 			# increment temperature every unit time
-			if incr and s and (dt * s) % 1 == 0:
-				target_temp += incr
+			if t_inc and s > 1 and (dt * s) % 1 == 0:
+				target_temp += t_inc
 				print('t =', dt*s, 'T =', target_temp)
 
 			# NVT Ensemble
 			# velocity rescale factor
-			chi = np.sqrt(target_temp/temp)
+
+			# increase very slowly, otherwise it will be chaos
+			temp_inc = (target_temp - temp) / increment_factor
+			chi = np.sqrt(temp_inc/temp)
+
 
 		# record target temp for the current step
 		MD['target_temp'][s] = target_temp
 
-		MD['density'][s] = density
-		MD['volume'][s] = vol
-
+		density = N / vol
 		pres = density * temp + vir / vol
 		MD['pressure'][s] = pres.copy()
+
+		if target_pres is None:
+			# No pressure control
+			pass
+		else:
+			# if pressure increment is specified
+			# and not the 0th step
+			# increment pressure every unit time
+			if p_inc and s > 1 and (dt * s) % 1 == 0:
+				target_pres += p_inc
+				print('t =', dt*s, 'P =', target_pres)
+
+			# Barostat
+			# increase very slowly, otherwise it will be chaos
+			pres_inc = (target_pres - pres) / increment_factor
+			target_vol = vir / (pres + pres_inc - density * temp)
+			target_length = np.power(np.abs(target_vol), 1.0/D)
+			psi = target_length / L
+
+			# rescale the coordinates
+			pos = psi * pos
+
+			# rescale length
+			L = target_length
+
+		# recalculate 
+		vol = L ** D
+		density = N / vol
+
+		MD['density'][s] = density
+		MD['volume'][s] = vol
 
 		# make p full step, if not the last one
 		if s < steps - 1:
