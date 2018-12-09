@@ -1,11 +1,14 @@
 import sys
 import numpy as np
 
-np.seterr(all='raise')
+# np.seterr(all='raise')
 
-def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, increment_factor=20.0):
-	""" Hybrid monte carlo with leapfrog method.
-		Return history of the whole MD run and final velocities. """
+def lf_loop(model, MD,
+			target_temp=None, t_inc=0,
+			target_pres=None, p_inc=0, increment_factor=20.0):
+
+	""" Molecular Dynamics with leapfrog method.
+		Return history of the whole MD run. """
 
 	L = MD['length']
 	steps = MD['steps']
@@ -18,7 +21,7 @@ def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, inc
 
 	N, D = pos.shape
 
-	vol = L * L * L 
+	vol = L ** D
 	density = N / vol
 	a, pot, vir = model.calculate_force_potential(pos, L)
 	ke, temp = model.ke_temp(vel)
@@ -64,6 +67,7 @@ def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, inc
 		if target_temp is None:
 			# NVE Ensemble
 			chi = 1
+			temp_inc = target_temp
 		else:
 			# if temperature increment is specified
 			# and not the 0th step
@@ -94,6 +98,7 @@ def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, inc
 
 		if target_pres is None:
 			# No pressure control
+			pres_inc = target_pres
 			pass
 		else:
 			# if pressure increment is specified

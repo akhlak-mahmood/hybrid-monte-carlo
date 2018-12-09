@@ -2,7 +2,6 @@ import sys
 import numpy as np 
 from scipy.stats import maxwell
 
-
 def init_dynamics(pos, vel, steps=1000, dt=0.01, L=None, Rho=None):
 	# initialize an empty dictionary for all the values 
 	# we will be calculating during the simulation
@@ -18,12 +17,14 @@ def init_dynamics(pos, vel, steps=1000, dt=0.01, L=None, Rho=None):
 
 	elif Rho is None:
 		vol = L**D
-		density = N / vol
+		Rho = N / vol
 
 	elif L is None:
-		density = Rho
 		vol = N * mass / Rho
 		L = np.power(vol, 1.0/3.0)
+
+	else:
+		vol = L ** D
 
 	MD = {
 		'length': L,
@@ -43,11 +44,18 @@ def init_dynamics(pos, vel, steps=1000, dt=0.01, L=None, Rho=None):
 		'density': np.zeros(steps)
 	}
 
-	MD['density'][0] = density
+	MD['density'][0] = Rho
 	MD['volume'][0] = vol
 
 	return MD
 
+
+def restart_dynamics(MD, steps, dt):
+	pos = MD['position'][-1].copy()
+	vel = MD['velocity'][-1].copy()
+	L = MD['length']
+	Rho = MD['density'][-1]
+	return init_dynamics(pos, vel, steps, dt, L, Rho)
 
 
 def fcc_positions(N, L):

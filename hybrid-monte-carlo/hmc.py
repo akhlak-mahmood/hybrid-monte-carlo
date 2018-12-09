@@ -12,7 +12,8 @@ from leapfrog import lf_loop
 
 from pdb import set_trace
 
-def HMC(model, MC, md_steps, target_temp=None):
+def HMC(model, MC, md_steps,
+	target_temp=None, target_pres=None):
 	""" Return N Metropolis configuration samples from initial
 		Positions and momenta """
 
@@ -42,6 +43,7 @@ def HMC(model, MC, md_steps, target_temp=None):
 	MC['temperature'][0] = temp
 	MC['target_temp'][0] = target_temp
 	MC['pressure'][0] = pres.copy()
+	MC['target_pres'][0] = target_pres
 
 	MC['accepted'] = 0
 	MC['rejected'] = 0
@@ -58,8 +60,16 @@ def HMC(model, MC, md_steps, target_temp=None):
 		vel = utils.mb_velocities(N, D, 1.5)
 
 		# trial = make a small change using MD
-		MD = utils.init_dynamics(pos, vel, md_steps, dt, L)
-		MD = lf_loop(model, MD, target_temp)
+
+		DYN = utils.init_dynamics(pos, vel, md_steps, dt, L)
+		NVT = lf_loop(model, DYN,
+			target_temp=target_temp, increment_factor=5)
+
+		NPT = utils.restart_dynamics(NVT, md_steps, dt)
+		MD = lf_loop(model, NPT,
+			target_temp=target_temp,
+			target_pres=target_pres, increment_factor=5)
+
 
 		# weight for the trial
 		wt = model.mc_weight(MD['position'][-1], MD['velocity'][-1],
@@ -132,12 +142,12 @@ def main():
 	N = 32
 	mass = 1.0
 
-	steps = 5000
+	steps = 100
 	dt = 0.01
 
 	density = 0.5
 	vol = N * mass / density
-	L = np.power(vol, 1.0/3.0)
+	L = np.power(vol, 1.0/D)
 
 	pos = utils.fcc_positions(N, L)
 	vel = utils.mb_velocities(N, D, 1.5)
@@ -149,20 +159,21 @@ def main():
 
 	model = LJ()
 
-	NTP = lf_loop(model, DYN, target_temp=1, target_pres=2)
-	#DYN = HMC(model, DYN, 10, 1)
+	# NTP = lf_loop(model, DYN, target_temp=1, target_pres=2)
+	# np.save('npt-lf.npy', NTP)
 
-	np.save('npt-lf.npy', NTP)
+	NTP = HMC(model, DYN, 15, 1, 2)
+	np.save('npt-hmc.npy', NTP)
+
 
 	plot.energy(NTP)
-
-	plot.pos(NTP['position'][-1], L)
-
-	plot.radial_distribution(NTP['position'][-1], L)
-
 	plot.velocity_distribution(NTP['velocity'][-1])
 
-	plot.animate3D(NTP['position'], L, NTP['temperature'], steps, dt)
+	# plot.pos(NTP['position'][-1], L)
+
+	# plot.radial_distribution(NTP['position'][-1], L)
+
+	# plot.animate3D(NTP['position'], L, NTP['temperature'], steps, dt)
 
 
 def run():
