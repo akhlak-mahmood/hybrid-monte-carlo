@@ -33,6 +33,7 @@ def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, inc
 	MD['density'][0] = density
 	MD['volume'][0] = vol 
 	MD['pressure'][0] = pres.copy()
+	MD['target_pres'][0] = target_pres
 
 
 	# make momentum half step at the very begining
@@ -80,7 +81,7 @@ def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, inc
 
 
 		# record target temp for the current step
-		MD['target_temp'][s] = target_temp
+		MD['target_temp'][s] = temp_inc
 
 		density = N / vol
 		pres = density * temp + vir / vol
@@ -109,6 +110,9 @@ def lf_loop(model, MD, target_temp=None, t_inc=0, target_pres=None, p_inc=0, inc
 
 			# rescale length
 			L = target_length
+
+		# record target pressure for the current step
+		MD['target_pres'][s] = pres_inc
 
 		# recalculate 
 		vol = L ** D

@@ -37,6 +37,7 @@ def init_dynamics(pos, vel, steps=1000, dt=0.01, L=None, Rho=None):
 		'kinetic': np.zeros(steps),
 		'potential': np.zeros(steps),
 		'pressure': np.zeros(steps),
+		'target_pres': np.zeros(steps),
 		'virial': np.zeros(steps),
 		'volume': np.zeros(steps),
 		'density': np.zeros(steps)
