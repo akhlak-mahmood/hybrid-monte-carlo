@@ -30,7 +30,7 @@ def energy(MD):
 
 	plt.subplot(4,1,1)
 	plt.plot(time, K+U)
-	plt.ylabel('$E_tot$')
+	plt.ylabel('$E_{tot}$')
 
 	# plt.subplot(4,1,2)
 	# plt.plot(time, U)

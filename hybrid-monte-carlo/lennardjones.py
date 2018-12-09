@@ -73,6 +73,6 @@ class LJ(object):
 		return kavg, 2.0 * kavg / D
 
 	def mc_weight(self, pos, vel, t, u, k):
-
-		# exp of H
-		return np.exp(u+k)
+		weight = np.exp(-(u+k))
+		print('H={}, T={}, W={}'.format(u+k, t, weight))
+		return weight

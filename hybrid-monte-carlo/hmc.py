@@ -52,18 +52,24 @@ def HMC(model, MC, md_steps,
 	w = model.mc_weight(pos, vel_orig, temp, pot, ke)
 
 	for s in range(1, mc_steps):
-		sys.stdout.write("\rRunning Hybrid [step {0}] acceptance {1:.2f} ... ".format(s+1,
+		sys.stdout.write("\rRunning Hybrid [step {0}] acceptance {1:.2f} ... \n".format(s+1,
 			MC['accepted']/s))
 		sys.stdout.flush()
 
 		# markov chain, reinit velocities
 		vel = utils.mb_velocities(N, D, 1.5)
 
+		MD = {}
+
 		# trial = make a small change using MD
-		MD = utils.init_dynamics(pos, vel, 20, 0.01, L)
+		MD = utils.init_dynamics(pos, vel, 10, 0.01, L)
+
+		w = model.mc_weight(MC['position'][s-1], MC['velocity'][s-1],
+			MC['temperature'][s-1], MC['potential'][s-1], MC['kinetic'][s-1])
+
 		MD = lf_loop(model, MD,
-						target_temp=1,
-						target_pres=2, increment_factor=10)
+						target_temp=3,
+						target_pres=None, increment_factor=10)
 		# plot.energy(MD)
 
 		# weight for the trial
@@ -72,6 +78,8 @@ def HMC(model, MC, md_steps,
 
 		# ratio of the weights = probability of the trial config
 		r = wt / w
+
+		print("Acceptance probability = ", r)
 		
 		# we are moving to the trial position with probability r
 		# i.e. if r >= 1 or the generated random number is less than r
@@ -89,6 +97,12 @@ def HMC(model, MC, md_steps,
 			MC['pressure'][s] = MD['pressure'][-1].copy()
 			MC['virial'][s] = MD['virial'][-1].copy()
 
+			MC['target_temp'][s] = MD['target_temp'][-1].copy()
+			MC['density'][s] = MD['density'][-1].copy()
+			MC['volume'][s] = MD['volume'][-1].copy()
+
+			print('============================================ Accepted!\n')
+
 		# MC rejected, use the previous values
 		else:
 			MC['rejected'] += 1
@@ -100,11 +114,12 @@ def HMC(model, MC, md_steps,
 			MC['kinetic'][s] = MC['kinetic'][s-1].copy()
 			MC['temperature'][s] = MC['temperature'][s-1].copy()
 			MC['pressure'][s] = MC['pressure'][s-1].copy()
-			MC['virial'][s] = MC['virial'][s-1].copy()			
+			MC['virial'][s] = MC['virial'][s-1].copy()
+			MC['target_temp'][s] = MC['target_temp'][s-1].copy()
+			MC['density'][s] = MC['density'][s-1].copy()
+			MC['volume'][s] = MC['volume'][s-1].copy()
 
-		MC['target_temp'][s] = target_temp
-		MC['density'][s] = density
-		MC['volume'][s] = vol
+		sys.stdout.flush()
 
 	sys.stdout.write("\rMetropolis done [{} steps].\n".format(s))
 	sys.stdout.flush()
@@ -137,7 +152,7 @@ def main():
 	N = 32
 	mass = 1.0
 
-	steps = 10
+	steps = 100
 	dt = 0.01
 
 	density = 0.5
