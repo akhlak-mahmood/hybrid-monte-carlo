@@ -61,16 +61,15 @@ def HMC(model, MC, md_steps,
 
 		MD = {}
 
-		# trial = make a small change using MD
-		MD = utils.init_dynamics(pos, vel, 10, 0.01, L)
-
 		w = model.mc_weight(MC['position'][s-1], MC['velocity'][s-1],
 			MC['temperature'][s-1], MC['potential'][s-1], MC['kinetic'][s-1])
 
+		# trial = make a small change using MD
+		MD = utils.init_dynamics(pos, vel, 10, 0.01, L)
+
 		MD = lf_loop(model, MD,
-						target_temp=3,
-						target_pres=None, increment_factor=10)
-		# plot.energy(MD)
+						target_temp=1,
+						target_pres=2, increment_factor=10)
 
 		# weight for the trial
 		wt = model.mc_weight(MD['position'][-1], MD['velocity'][-1],
@@ -98,6 +97,7 @@ def HMC(model, MC, md_steps,
 			MC['virial'][s] = MD['virial'][-1].copy()
 
 			MC['target_temp'][s] = MD['target_temp'][-1].copy()
+			MC['target_pres'][s] = MD['target_pres'][-1].copy()
 			MC['density'][s] = MD['density'][-1].copy()
 			MC['volume'][s] = MD['volume'][-1].copy()
 
@@ -116,6 +116,7 @@ def HMC(model, MC, md_steps,
 			MC['pressure'][s] = MC['pressure'][s-1].copy()
 			MC['virial'][s] = MC['virial'][s-1].copy()
 			MC['target_temp'][s] = MC['target_temp'][s-1].copy()
+			MC['target_pres'][s] = MC['target_pres'][s-1].copy()
 			MC['density'][s] = MC['density'][s-1].copy()
 			MC['volume'][s] = MC['volume'][s-1].copy()
 
@@ -152,7 +153,7 @@ def main():
 	N = 32
 	mass = 1.0
 
-	steps = 100
+	steps = 1000
 	dt = 0.01
 
 	density = 0.5
@@ -163,9 +164,6 @@ def main():
 	vel = utils.mb_velocities(N, D, 1.5)
 
 	DYN = utils.init_dynamics(pos, vel, steps, dt, L)
-	print('length = {}, volume = {}, density = {}'.format(DYN['length'], DYN['volume'][0], DYN['density'][0]))
-	# plot.pos(pos, L)
-	input('Press ENTER to continue ... ')
 
 	model = LJ()
 

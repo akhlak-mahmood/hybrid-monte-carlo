@@ -72,7 +72,7 @@ def lf_loop(model, MD,
 			# if temperature increment is specified
 			# and not the 0th step
 			# increment temperature every unit time
-			if t_inc and s > 1 and (dt * s) % 1 == 0:
+			if t_inc and s > 1 and (dt * s) % increment_factor == 0:
 				target_temp += t_inc
 				print('t =', dt*s, 'T =', target_temp)
 
@@ -104,7 +104,7 @@ def lf_loop(model, MD,
 			# if pressure increment is specified
 			# and not the 0th step
 			# increment pressure every unit time
-			if p_inc and s > 1 and (dt * s) % 1 == 0:
+			if p_inc and s > 1 and (dt * s) % increment_factor == 0:
 				target_pres += p_inc
 				print('t =', dt*s, 'P =', target_pres)
 
