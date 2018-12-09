@@ -60,16 +60,11 @@ def HMC(model, MC, md_steps,
 		vel = utils.mb_velocities(N, D, 1.5)
 
 		# trial = make a small change using MD
-
-		DYN = utils.init_dynamics(pos, vel, md_steps, dt, L)
-		NVT = lf_loop(model, DYN,
-			target_temp=target_temp, increment_factor=5)
-
-		NPT = utils.restart_dynamics(NVT, md_steps, dt)
-		MD = lf_loop(model, NPT,
-			target_temp=target_temp,
-			target_pres=target_pres, increment_factor=5)
-
+		MD = utils.init_dynamics(pos, vel, 20, 0.01, L)
+		MD = lf_loop(model, MD,
+						target_temp=1,
+						target_pres=2, increment_factor=10)
+		# plot.energy(MD)
 
 		# weight for the trial
 		wt = model.mc_weight(MD['position'][-1], MD['velocity'][-1],
@@ -142,7 +137,7 @@ def main():
 	N = 32
 	mass = 1.0
 
-	steps = 100
+	steps = 10
 	dt = 0.01
 
 	density = 0.5

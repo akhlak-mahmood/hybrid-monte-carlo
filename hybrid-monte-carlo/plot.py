@@ -20,16 +20,25 @@ def energy(MD):
 	U = MD['potential']
 	K = MD['kinetic']
 	P = MD['pressure']
+	V = MD['volume']
 
 	time = [dt * i for i in range(steps)]
 
+	# plt.subplot(4,1,1)
+	# plt.plot(time, K)
+	# plt.ylabel('$E_k$')
+
 	plt.subplot(4,1,1)
-	plt.plot(time, K)
-	plt.ylabel('$E_k$')
+	plt.plot(time, K+U)
+	plt.ylabel('$E_tot$')
+
+	# plt.subplot(4,1,2)
+	# plt.plot(time, U)
+	# plt.ylabel('$E_p$')
 
 	plt.subplot(4,1,2)
-	plt.plot(time, U)
-	plt.ylabel('$E_p$')
+	plt.plot(time, V)
+	plt.ylabel('$volume$')
 
 	plt.subplot(4,1,3)
 	plt.plot(time, P)
