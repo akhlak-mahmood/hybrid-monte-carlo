@@ -1,5 +1,2 @@
-# Computational Physics Final Project
-
-Goal: Something about MD ergodicity, and posibly incorporating Hybrid MCMD.
-Also testing different Thermostats.
-
+# hybrid-monte-carlo
+Hybrid Monte Carlo method to study lennard jones fluid
