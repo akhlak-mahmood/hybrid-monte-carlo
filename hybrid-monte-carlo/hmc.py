@@ -170,7 +170,7 @@ def main():
 	# NTP = lf_loop(model, DYN, target_temp=1, target_pres=2)
 	# np.save('npt-lf.npy', NTP)
 
-	NTP = HMC(model, DYN, 15, 1, 2)
+	NTP = HMC(model, DYN, 10, 1, 2)
 	np.save('npt-hmc.npy', NTP)
 
 
