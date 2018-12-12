@@ -1,31 +1,159 @@
 \documentclass[aps,prl,reprint]{revtex4-1}
-\usepackage{blindtext}
+\usepackage{amsmath}
+\usepackage{graphicx}
 
 \begin{document}
 \title{Hamiltonian Monte Carlo study of Lennard Jones system at constant pressure and temperature}
-\author{Akhlak-Ul Mahmood}
-\email{amahmoo3@ncsu.edu}
+\author{Akhlak Mahmood}
+\email{Email: amahmoo3@ncsu.edu\\}
 \affiliation{Department of Physics, NC State University}
 
 \begin{abstract}
-Molecular Dynamics (MD) simulations have become indispensable tools in many areas of science. However, the problem of using MD in statistical predictions is two fold. The discrete time integration schemes used in the deterministic algorithm of MD introduce sampling errors, and it fails in terms of exploring the configuration space ergodically. Monte Carlo (MC) methods are exact in principle and asymptotically sample from the correct statistical ensemble. In this letter I present the implications of the Hamiltonian Monte Carlo (HMC) method as a solution to these problems and use it to study the 3D Lennard Jones system at NPT ensemble.
+Molecular Dynamics (MD) simulations have become indispensable tools in many areas of science. However, the problem of using MD in statistical predictions is two fold. The discrete time integration schemes used in the deterministic algorithm of MD introduce sampling errors, and it fails in terms of exploring the configuration space ergodically. Monte Carlo (MC) methods are exact in principle and asymptotically sample from the correct statistical ensemble. In this letter, I discuss the implications of the Hamiltonian Monte Carlo (HMC) method as a solution to these problems and present its use to study a 3D Lennard Jones system of 32 particles at NPT ensemble.
 \end{abstract}
 
 \maketitle
 
-Ergodicity is one of the most important concepts of statistics. The accuracy of the predictions of the statistical methods highly depend on how ergodic the system is. A random process $X(t)$ is ergodic if all of its statistics can be determined from a sample function of the process, i.e., its ensemble average is equal to its time average. This can be illustrated by an example. Suppose we want to find out the most visited park in a city. We could look at all the parks at some time, see how many people are in park A, how many in park B then make a decision. The other method would be to randomly select a group of people and follow them over a long period of time, say for a year, then see which park they visit the most. The first prediction is based on ensemble average at a certain time, the prediction from the second method is the time average for a group of people. Would they be the same? Most probably not. The prediction from the ensemble average is not valid other than that certain time, whereas the prediction from the time average may not be representative of all the people of the city. One of the classic examples of an ergodic system is a rolling die. Suppose in one method, we let 1000 people roll a fair die at the same time, add the outputs together and divide that by 1000 to find the average output. In the second method, we roll one fair die 1000 times and find the average output in the same way. The results will be identical within the range of statistical error. They would asymptotically reach the same conclusion if we increase the number from 1000 to infinity. First example is a classic case of human population not being ergodic, same is true for financial markets. Any kind of prediction we get using statistics, where we study a property to predict about a different one, therefore, depends on how ergodic the system we are studying is. A precondition for ergodicity is that the system has to be stationary over long time period, no net growth or loss can happen other than random fluctuations. 
+% intro to ergodicity
+Ergodicity is one of the most important concepts of statistics. The accuracy of the predictions of the statistical methods highly depend on how ergodic the system is. A random process $X(t)$ is ergodic if all of its statistics can be determined from a sample function of the process, i.e., its ensemble average is equal to its time average. Any kind of prediction we get using statistics, where we study a property to predict about a different one, therefore, depends on how ergodic the system we are studying is. A precondition for ergodicity is that the system has to be stationary over long time period, no net growth or loss can happen other than random fluctuations. 
+The primary goal of molecular simulations are to correctly sample the associated canonical distribution. However, one inherent limitation of the MD simulation is, if the system under study is not stationary, it will be trapped in a subset of the configuration space, failing to converge to its unique invariant ensemble average asymptotically. \cite{Neal2012} Currently this problem is approached by running multiple simulations from a number of different initial configurations then estimating the measurables from the averages. \cite{Calvo2002} MD tends to predict accurately in NVE or microcanonical ensembles. However the systems we are normally interested for simulations are in NVT or NPT ensembles, where it fails to preserve ergodicity.
+%since it violets the precondition.
 
-Molecular Dynamics is not ergodic just like the first example. The primary goal of molecular simulations are to correctly sample the phase space. However, if the system under study is not stationary, the MD simulation will be trapped in a subset of the configuration space, failing to converge to its unique invariant ensemble average asymptotically.\cite{Neal2012} Currently this problem is taken care of by running multiple simulations from a number of different initial configurations then averaging the predicted results.\cite{Calvo2002} MD tends to predict accurately in NVE or microcanonical ensembles. However the systems we are normally interested for simulations are in NVT or NPT ensembles, which doesn't preserve ergodicity since it violets the precondition.
+Many different methods have been proposed to overcome this fundamental problem. Langevin Monte Carlo adds a stochastic part to the MD evolution process. Force Bias MC uses some guiding algorithm to speed up the sampling process. But both of these methods suffer from very short time evolution due to the computational expenses. Extended System Method introduces an additional dynamical variable, known as effective mass, to the Hamiltonian to represent a heat or pressure reservoir to maintain NPT ensemble. But it can also show nonphysical behaviors because of very large relaxation time.\cite{Cho1992} In their seminal paper of 1987, Duane et. al. united the MC and MD as a solution to these problems to study lattice field theory, which they termed as ``Hybrid Monte Carlo" method.\cite{Duane1987} HMC has since been applied to study quantum chromodynamics, lattice gauge theories. Mehlig et. al. first studied the condensed matter systems using HMC in 1992. It has been proved that HMC method is `exact' given a reversible and \textit{symplectic} integration scheme is used meaning no uncontrollable error is accumulated during the simulation process due to large step size. \cite{Mehlig1992}
 
-% Proposed methods:
-Many different methods have been proposed to overcome this fundamental problem. Langevin Monte Carlo adds a stochastic part to the MD evolution process. Force Bias MC uses some guiding algorithm to the sampling process. But both of these methods suffer from very short time evolution due to the computational expenses. Extended System Method (ESM) introduces an additional dynamical variable, known as effective mass, to the Hamiltonian to represent a heat or pressure reservoir to maintain NPT ensemble. But it can show nonphysical behavior because of very large relaxation time.\cite{Cho1992} Duane, Kennedy, Pendleton, and Roweth united the MC and MD in their seminal paper as a solution to these problem which they termed as "Hybrid Monte Carlo" method.\cite{Duane1987}
+Here I present the study of a three dimensional Lennard Jones (LJ) system with 32 particles, since LJ systems are shown to behave ergodically. \cite{Cho1992} I assume the initial configuration is same as a FCC Argon lattice crystal. I make use of the ability of HMC to improve upon conventional MD or MC simulation and determine the critical point of the LJ system. I use the term ``Hamiltonian Monte Carlo" method since it correctly represents the exact process employed.
 
-Leimkuhler and Reich (2004) described how to quantify the errors that propagate in dynamics. The \textit{local error} is the error after one step, whereas the \textit{global error} is the error that adds up after simulating after a fixed number of steps. The leapfrog method has a local error of the order $\epsilon ^ 3$ and a global error of $\epsilon ^ 2$. Any reversible method must have a even order global error, and as a result leapfrog method is reversible.
+% HMC by Duane
+In Marcov Chain Monte Carlo method, a sequence of randomly generated independent simulations are run. The \textit{detailed balance} condition ensures that the target canonical distribution remains invariant. \cite{Duane1987} Time \textit{reversible} and \textit{symplectic} discretization methods have been proven to satisfy this detailed balance condition. \cite{Mehlig1992} Ergodicity on the other hand ensures the convergence to that correct canonical distribution. \cite{Suwa2010} In MC methods, more than one move at a time makes the acceptance probability very low, contributing to very large computational expenses. HMC corrects this by adding a deterministic MD trajectory run which is geometrically faster than random walk.
 
-HMC 
+% HMC theory
+In the following we consider a system of N particles with a set of canonical positions $\mathbf{\{q_i\}}$ and momenta $\mathbf{\{p_i\}}$. The probability density of the associated canonical distribution is the familiar Boltzmann distribution.
+\begin{equation}
+	p(\mathbf{q}) \propto \exp(- \beta U(\mathbf{q}))
+\end{equation}
+We define $K=\frac{|\mathbf{p}|^2}{2 m}$ as the kinetic energy of the system. Then the probability for forward and reverse moves can be shown as,
+\begin{flalign}
+	\begin{aligned}
+		P^{old \to new}& = min(1, \; e^{- \beta \Delta U} \; e^{- \beta \Delta K}) \\
+		& = min(1, \; e^{- \beta \Delta H})
+  \end{aligned}&&&
+\end{flalign}
+where $H = U + K$ is the total energy of the system. However in case of NPT ensemble, this relation takes the following form.
+\begin{equation}
+		P^{old \to new} = min(1, \; exp(N \log{\frac{V_2}{V_1}} - \beta \Delta U - \beta \; P \Delta V)) \newline
+\end{equation}
 
-In summary, by using Hamiltonian Monte Carlo, I have established that the ergodicity of the LJ systems improves and we can get considerably better results without expending too much computational resources. 
+% lf integrator
+Traditionally Leapfrog algorithms are used with HMC studies. Here, I shall adhere to this convention and implement this algorithm as the MD integrator. Leapfrog is a derivative of Velocity-Verlet algorithm, which is time reversible and symplectic in nature, so it preserves the volume of the phase space and the total energy therefore remains conserved. Therefore it satisfies the requirements of detailed balance. In contrast to the Velocity-Verlet algorithm, Leapfrog moves by half time steps to calculate the next set of positions and velocities. It is computationally less expensive and requires less memory. I take the initial Leapfrog step from the output of a single Euler step.
+\begin{equation}
+	\mathbf{p_i}(t + \frac{1}{2} dt) = \mathbf{p_i}(t) - \frac{1}{2} dt \; \frac{\partial U(q(t))}{\partial \mathbf{q_i}} \label{lfeq1}
+\end{equation}
+\begin{equation}
+	\mathbf{q_i}(t + dt) = \mathbf{q_i}(t) + dt \; \frac{\mathbf{p_i}(t+\frac{1}{2} dt)}{m_i}	\label{lfeq2}
+\end{equation}
+\begin{equation}
+	\mathbf{p_i}(t + dt) = \mathbf{p_i}(t+\frac{1}{2} dt) - \frac{1}{2} dt \; \frac{\partial U(q(t+dt))}{\partial \mathbf{q_i}} \label{lfeq3}
+\end{equation}
 
+Leimkuhler and Reich (2004) described how to quantify the errors that propagate in dynamics. \cite{Leimkuhler2004} The \textit{local error} is the error after one step, whereas the \textit{global error} is the error that adds up after simulating after a fixed number of steps. The leapfrog method has a local error of the order $\epsilon ^ 3$ and a global error of $\epsilon ^ 2$. Any reversible method must have a even order global error, and as a result leapfrog method is reversible.
+
+In this Hamiltonian Monte Carlo study, therefore, I run a short time MD simulation sampling its initial momenta from a MB distribution to satisfy the Markov chain condition. I then calculate the Monte Carlo acceptance using the Metropolis scheme. Being symplectic and time reversible, the Leapfrog algorithm satisfies the \textit{detailed balance condition}. Since the system under study is ergodic, ensemble average should not depend on the time step size chosen during the MD run. 
+
+% Algorithm
+We can then introduce the following algorithm for the HMC simulation.
+\begin{enumerate}
+	\item Generate random velocities for all the particles from a Maxwell-Boltzmann distribution. 
+	\item Run a MD simulation with leapfrog integrator for a short time step.
+	\item Accept the new configuration with a probability $$min(1,\; exp(-\beta \Delta H))$$
+	If rejected, continue with the previous configuration.
+\end{enumerate}
+
+HMC can still be non-ergodic if there is a periodicity of MD output. More intuitively, trajectory can return to the same exact position after a short MD run. A solution to this problem is to randomly choose the time step and number of steps so that periodicity is avoided. \cite{Mackenze1989} However, we note that, this type of periodicity is extremely rare when we have a large number of particles and the initial velocities are randomly distributed at each MD iteration.
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{acceptance2.png}
+	\caption{Acceptance at different timesteps and length} \label{acpt}
+\end{figure}
+
+I tested how the \textit{acceptance} of the HMC changes for my model with different time step and length for 100 steps simulations. We can see in Figure (\ref{acpt}), the HMC fails to produce any acceptance above time step $dt = 0.05$. The length of the simulation does not have any affect on the Monte Carlo acceptance rate. This results contradicts the established results where longer simulation length should produce higher rejection of MC steps. \cite{Neal2012} Nonetheless, I decided to choose $dt = 0.01$ for the simulations of this work with each trajectory for 10 steps.
+
+% why NPT
+Usually for the systems we are interested in are in constant pressure and temperature conditions or more generally in NPT ensembles. We might therefore consider implementing a simple barostat while studying the HMC methods. This offers the interesting possibility of exploring the critical phenomena of LJ particles.
+
+% Thermostat
+I shall maintain the constant temperature using velocity rescaling Thermostat. At each time step, velocities of the particles are rescaled on the last step of Leapfrog algorithm (Equation \ref{lfeq3}) by a factor $\chi $ using the following equations.
+\begin{equation}
+\chi = \sqrt{\frac{T_{expected}}{T}}
+\end{equation}
+\begin{equation}
+\mathbf{p_i} = \chi \; \mathbf{p_i}
+\end{equation}
+
+% Barostat
+We can estimate the pressure of the system from the virial energy $F$ directly using the equation below.
+\begin{equation}
+P = \rho \; T + \frac{F}{V}
+\end{equation}
+
+I, therefore, similarly propose the volume rescaling method to keep the pressure of the system constant. 
+\begin{equation}
+	V_{expected} = \frac{F}{P_{expected} - \rho \; T}
+\end{equation}
+
+Volume can thus be rescaled to reach the target constant pressure. This implementation of constant temperature and pressure allows us to study the critical phenomena of the system.
+\newline
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{fcc.png}
+	\caption{Initial FCC configuration} \label{fcc}
+\end{figure}
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{vdist.png}
+	\caption{Speed distribution of the LJ particles.} \label{vdist}
+\end{figure}
+
+% simulation
+Figure (\ref{fcc}) shows the initial configuration of 32 LJ particles as a 3D FCC Argon lattice. I do not make any pressure or temperature increment during the first 1 time unit to make sure that a stable NPT condition is reached in the system. Temperature or pressure was then gradually changed to achieve the desired behavior. Each different simulation was run for total 50 time units. Periodic boundary conditions were applied. LJ potential was truncated at $3 \sigma $. All the calculations I present here are in reduced units. As can been seen from Figure (\ref{vdist}), the final velocity distribution after the simulation roughly followed a Boltzmann distribution.
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{t-decrease-p2v2.png}
+	\caption{Constant Pressure and decreasing Total Energy, Volume and Temperature.} \label{tempdecr}
+\end{figure}
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{tphase.png}
+	\caption{Phase diagram at constant P = 2} \label{tphase}
+\end{figure}
+
+% results
+We now turn to illustrate the findings of the HMC simulations on LJ system. Figure (\ref{tempdecr}) shows the decreasing temperature at constant pressure for $10$ time units. We note the decreasing volume to keep the pressure constant. Figure (\ref{tphase}) shows the phase diagram of the system at constant pressure. The plotted temperature at different densities were fitted as the red line. The line represents the phase change points. The labels on the graph represents the stable states of the system in equilibrium. We can determine the critical temperature from the peak of the line and corresponding critical density. The temperature was recorded to be $T_c = 1.518$ and the density was $\rho_c = 0.586$. The vapor + liquid denotes the gas-liquid coexisting state. In this region of the density, the line does not terminate. This implies the vapour + liquid phase is distinguishable from the liquid phase. 
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{pressure-vs-density.png}
+	\caption{Phase diagram at constant T = 1} \label{pphase}
+\end{figure}
+
+I have also performed a similar simulation for pressure with different density values at constant temperature. Figure (\ref{pphase}) shows a critical pressure of $0.066$ at constant temperature.
+%However a zoomed in view in Figure (\ref{pphase2}) shows the pressure blowing up at around $ \rho = 0.428$.
+
+
+%\begin{figure}
+%	\includegraphics[width=\columnwidth]{pressure-vs-density-zoomed.png}
+%	\caption{Phase diagram at constant T = 1} \label{pphase2}
+%\end{figure}
+
+\begin{figure}
+	\includegraphics[width=\columnwidth]{density-vs-pressure.png}
+	\caption{Density vs. pressure at different constant temperature.} \label{dvsp}
+\end{figure}
+
+Finally Figure (\ref{dvsp}) shows density vs pressure at different isotherms. The inverse correlation between density and temperature is evident from the lines of this plot.
+
+To compare, for untruncated LJ potential the critical temperature reported by Caillol (1998) was $T_c=1.326$ and the critical density was $\rho_c=0.316$. \cite{Caillol1998} We can find 14\% and 85\% as the percentage of error respectively with these literature values. The lack of precision in the results might be due to ineffective thermostat and barostat. One can see in Figure (\ref{tphase}) and Figure (\ref{pphase}) that despite employing a rescaling methods to keep the pressure and temperature constant, they still fluctuated violently. This demonstrates the need for more sophisticated thermostat and barostat control in simulations. For example, Nose-Hoover Chain, Langevin or Anderson thermostats and barostat would give a better result in this case.
+\newline
+
+To conclude, in this letter, we have discussed the critical behavior of a 32 particles LJ systems, by employing the Hamiltonian Monte Carlo method. I used the FCC Argon initial conditions in three dimensions, studied the Monte Carlo acceptance behavior and employed a constant pressure and temperature control to represent the typical experimental NPT ensemble. While HMC approach offers a significant improvement over conventional MD simulations, precise determination of the MD time steps and length of the simulations is still needed. I would like to point out that the critical pressure and temperature found in this work have considerable difference from the established values. Nonetheless, I believe, Molecular Dynamics simulation can be further enhanced by HMC method to predict the correct statistics while maintaining the ergodicity of the system we are interested in.
 
 % Tell bibtex which bibliography style to use
 \bibliographystyle{apsrev4-1}
